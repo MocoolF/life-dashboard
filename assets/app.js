@@ -141,6 +141,7 @@ function fold(dates) {
       o.taskZ[zone(pct(f.task.d, f.task.t))]++;
     }
     o.noplan += f.noplan;
+    if (f.noplan) o.taskZ.red++;                      // день без плана считается красным
     if (f.hab) {
       o.hab = o.hab || { d:0, t:0 };
       o.hab.d += f.hab.d; o.hab.t += f.hab.t;
@@ -162,21 +163,13 @@ function fold(dates) {
 function datesOf(a, b) { const out = []; for (let d = a; d <= b; d = addD(d, 1)) out.push(d); return out; }
 
 function buildRows(from, to) {
-  const n = daysIn(from, to);
-  const step = n <= 45 ? 'day' : n <= 200 ? 'week' : 'month';
-  const groups = new Map();
-  datesOf(from, to).forEach(d => {
-    const k = step === 'day' ? d : step === 'week' ? mondayOf(d) : d.slice(0,7);
-    if (!groups.has(k)) groups.set(k, []);
-    groups.get(k).push(d);
+  // таймлайн всегда по дням, при любом периоде
+  const rows = datesOf(from, to).map(d => {
+    const o = fold([d]);
+    if (o.taskP == null && o.noplan) o.taskP = 0;     // задачи не ставились — на графике 0%
+    return { a:d, b:d, ...o, label: short(d), title: dayName(d) };
   });
-  const rows = [...groups.values()].map(ds => {
-    const a = ds[0], b = ds[ds.length - 1];
-    return { a, b, ...fold(ds),
-      label: step === 'day' ? short(a) : step === 'week' ? span(a, b) : MON[parse(a).getMonth()],
-      title: step === 'day' ? dayName(a) : step === 'week' ? `Неделя ${span(a, b)}` : `${MON[parse(a).getMonth()]} ${parse(a).getFullYear()}` };
-  });
-  return { rows, step };
+  return { rows, step:'day' };
 }
 
 /* ===================== верхние карточки ===================== */
@@ -217,111 +210,109 @@ const mk = (t, a) => { const n = document.createElementNS(SVGNS, t); for (const 
 
 function renderTimeline() {
   const { rows, step } = buildRows(S.from, S.to);
-  $('#dynHint').textContent = `${span(S.from, S.to)} · по ${{day:'дням',week:'неделям',month:'месяцам'}[step]}`;
+  const tot = fold(datesOf(S.from, S.to));
+  $('#dynHint').textContent = `${span(S.from, S.to)} · по дням`;
   $('#zoneLegend').innerHTML = ZONES.map(Z =>
     `<span class="zl__i"><i class="zl__d" style="background:${zvar(Z.id)}"></i>${Z.range}</span>`).join('');
 
   const box = $('#timeline'); box.innerHTML = '';
   const width = Math.max(280, box.clientWidth || 600);
   const hasLegacy = rows.some(r => !r.hab && r.hz);
-  const hasNoplan = rows.some(r => !r.task && r.noplan);
-  const tracks = [
-    { kind:'hab',  title:'Привычки', p: r => r.habP,  ghost: r => r.hz, sum: fold(datesOf(S.from, S.to)).habP },
-    { kind:'task', title:'Задачи',   p: r => r.taskP, hollow: r => r.noplan > 0, sum: fold(datesOf(S.from, S.to)).taskP }
-  ].map(t => {
-    const w = el('div','tl__track', `<div class="tl__head"><span class="tl__t">${t.title}</span>
-      <span class="tl__sum">за период ${pctS(t.sum)}</span></div>`);
-    const ch = track(rows, t, width, step);
-    w.append(ch.svg); box.append(w);
-    return ch;
-  });
+  box.append(el('div','tl__lg', SERIES.map(s => `<span class="tl__li">${markerSvg(s)}<b>${s.title}</b>
+    <span class="tl__lp">за период ${pctS(s.p(tot))}</span></span>`).join('')
+    + (hasLegacy ? `<span class="tl__li tl__li--note"><i class="tl__ghost"></i>привычки из таблицы — известна только зона</span>` : '')));
 
-  const notes = [];
-  if (hasLegacy) notes.push('<span class="zl__i"><i class="zl__d" style="background:var(--ink-3);opacity:.45;height:12px;width:7px"></i>из таблицы — известна только зона</span>');
-  if (hasNoplan) notes.push('<span class="zl__i"><svg width="10" height="10"><circle cx="5" cy="5" r="3.5" fill="none" stroke="var(--ink-3)" stroke-width="1.5"/></svg>задачи не ставились</span>');
-  if (notes.length) box.append(el('div','zl', notes.join('')));
+  const ch = chart(rows, width);
+  box.append(ch.svg);
 
-  // общий курсор: наведение на любой график подсвечивает день на обоих
   const tip = $('#tip');
-  const move = (ev, ch) => {
+  const move = ev => {
     const pt = ev.touches ? ev.touches[0] : ev;
     const i = ch.index(pt.clientX);
     if (i == null) return out();
-    tracks.forEach(t => t.mark(i));
+    ch.mark(i);
     tip.innerHTML = tipHtml(rows[i], step);
     tip.hidden = false;
     const tw = tip.offsetWidth, th = tip.offsetHeight;
     tip.style.left = Math.max(8, Math.min(innerWidth - tw - 8, pt.clientX - tw/2)) + 'px';
     tip.style.top  = (pt.clientY - th - 16 < 8 ? pt.clientY + 18 : pt.clientY - th - 16) + 'px';
   };
-  const out = () => { tracks.forEach(t => t.clear()); tip.hidden = true; };
-  tracks.forEach(ch => {
-    ch.svg.addEventListener('mousemove', e => move(e, ch));
-    ch.svg.addEventListener('mouseleave', out);
-    ch.svg.addEventListener('touchstart', e => move(e, ch), {passive:true});
-    ch.svg.addEventListener('touchmove',  e => move(e, ch), {passive:true});
-  });
+  const out = () => { ch.clear(); tip.hidden = true; };
+  ch.svg.addEventListener('mousemove', move);
+  ch.svg.addEventListener('mouseleave', out);
+  ch.svg.addEventListener('touchstart', move, {passive:true});
+  ch.svg.addEventListener('touchmove',  move, {passive:true});
   S.tipOut = out;
 }
 
-function track(rows, def, W, step) {
-  const H = W < 520 ? 150 : 176, L = 34, R = 6, T = 8, B = 22;
+/* две линии на одном поле: различаются цветом линии и формой точки, точка — цветом зоны */
+const SERIES = [
+  { id:'hab',  title:'Привычки', line:'var(--l-hab)',  shape:'circle', p: r => r.habP },
+  { id:'task', title:'Задачи',   line:'var(--l-task)', shape:'square', p: r => r.taskP }
+];
+function markerSvg(s) {
+  return `<svg width="26" height="12" aria-hidden="true"><line x1="1" x2="25" y1="6" y2="6" stroke="${s.line}" stroke-width="2.5" stroke-linecap="round"/>
+    ${s.shape === 'circle' ? `<circle cx="13" cy="6" r="4.5" fill="${s.line}" stroke="var(--surface)" stroke-width="1.5"/>`
+      : `<rect x="8.5" y="1.5" width="9" height="9" rx="2" fill="${s.line}" stroke="var(--surface)" stroke-width="1.5"/>`}</svg>`;
+}
+
+function chart(rows, W) {
+  const H = W < 520 ? 300 : 380, L = 38, R = 8, T = 10, B = 24;
   const iw = W - L - R, ih = H - T - B, n = rows.length, slot = iw / n;
-  const svg = mk('svg', { viewBox:`0 0 ${W} ${H}`, width:W, height:H, class:'tl__svg', role:'img', 'aria-label':def.title });
+  const svg = mk('svg', { viewBox:`0 0 ${W} ${H}`, width:W, height:H, class:'tl__svg', role:'img', 'aria-label':'Привычки и задачи по дням' });
   const x = i => L + (i + .5) * slot;
   const y = p => T + ih - p / 100 * ih;
 
-  // полосы зон
+  // полосы зон и подписи порогов
   ZONES.forEach(Z => svg.append(mk('rect', { x:L, width:iw, y:y(Z.hi), height:y(Z.lo) - y(Z.hi),
-    fill:zvar(Z.id), style:`fill-opacity:var(${Z.id === 'blue' ? '--band-blue' : '--band'})` })));
-  [0, 50, 75, 100].forEach(v => {
-    const t = mk('text', { x:L - 7, y:y(v) + 3.5, 'text-anchor':'end', 'font-size':10, fill:'var(--ink-3)' });
-    t.textContent = v === 100 ? '100%' : v; svg.append(t);
+    fill:zvar(Z.id), style:`fill-opacity:var(--band-${Z.id})` })));
+  [50, 75].forEach(v => svg.append(mk('line', { x1:L, x2:W - R, y1:y(v), y2:y(v), stroke:'var(--surface)', 'stroke-width':1.5 })));
+  [0, 25, 50, 75, 100].forEach(v => {
+    const t = mk('text', { x:L - 8, y:y(v) + 4, 'text-anchor':'end', 'font-size':11, fill:'var(--ink-3)' });
+    t.textContent = v + '%'; svg.append(t);
   });
-  svg.append(mk('line', { x1:L, x2:W - R, y1:y(0) + .5, y2:y(0) + .5, stroke:'var(--line)', 'stroke-width':1 }));
 
-  // подписи дат: не теснее ~64px
+  // подписи дат: не теснее ~64px, последняя не налезает на соседнюю
   const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(iw / 64))));
   rows.forEach((r, i) => {
     if (i % every && i !== n - 1) return;
-    if (i === n - 1 && i % every && (i % every) < every * .6) return;   // последняя не налезает на соседнюю
-    const t = mk('text', { x:x(i), y:H - 6, 'text-anchor':'middle', 'font-size':10, fill:'var(--ink-3)' });
-    t.textContent = step === 'week' ? short(r.a) : r.label; svg.append(t);
+    if (i === n - 1 && i % every && (i % every) < every * .6) return;
+    const t = mk('text', { x:x(i), y:H - 6, 'text-anchor':'middle', 'font-size':11, fill:'var(--ink-3)' });
+    t.textContent = r.label; svg.append(t);
   });
 
-  // столбики «только зона» (данные из таблицы)
-  const cw = Math.max(4, Math.min(slot * .62, 16));
-  if (def.ghost) rows.forEach((r, i) => {
-    const z = def.p(r) == null && def.ghost(r);
-    if (!z) return;
-    const Z = ZONES.find(q => q.id === z);
-    svg.append(mk('rect', { x:x(i) - cw/2, width:cw, y:y(Z.hi) + 1, height:y(Z.lo) - y(Z.hi) - 2, rx:3,
-      fill:zvar(z), 'fill-opacity':.42 }));
-  });
-  if (def.hollow) rows.forEach((r, i) => {
-    if (def.p(r) == null && def.hollow(r))
-      svg.append(mk('circle', { cx:x(i), cy:y(0) - 5, r:3.5, fill:'var(--surface)', stroke:'var(--ink-3)', 'stroke-width':1.5 }));
-  });
-
-  // линия рвётся на днях без данных
-  let seg = [];
-  const flush = () => {
-    if (seg.length > 1) svg.append(mk('polyline', { points:seg.join(' '), fill:'none', stroke:'var(--ink-2)', 'stroke-opacity':.55,
-      'stroke-width':2, 'stroke-linejoin':'round', 'stroke-linecap':'round' }));
-    seg = [];
-  };
-  rows.forEach((r, i) => { const p = def.p(r); if (p == null) flush(); else seg.push(`${x(i).toFixed(1)},${y(p).toFixed(1)}`); });
-  flush();
-  const rad = slot < 9 ? 3 : 4.5;
+  // привычки из таблицы: столбик во всю высоту зоны
+  const cw = Math.max(2, Math.min(slot * .62, 18));
   rows.forEach((r, i) => {
-    const p = def.p(r); if (p == null) return;
-    svg.append(mk('circle', { cx:x(i), cy:y(p), r:rad, fill:zvar(zone(p)), stroke:'var(--surface)', 'stroke-width':2 }));
+    if (r.habP != null || !r.hz) return;
+    const Z = ZONES.find(q => q.id === r.hz);
+    svg.append(mk('rect', { x:x(i) - cw/2, width:cw, y:y(Z.hi) + 1.5, height:y(Z.lo) - y(Z.hi) - 3, rx:Math.min(3, cw/2),
+      fill:zvar(r.hz), style:'fill-opacity:var(--ghost)' }));
   });
+
+  // линии рвутся только там, где дня нет в данных
+  const rad = slot < 6 ? 2.6 : slot < 10 ? 3.4 : 4.8;
+  SERIES.forEach(s => {
+    let seg = [];
+    const flush = () => {
+      if (seg.length > 1) svg.append(mk('polyline', { points:seg.join(' '), fill:'none', stroke:s.line,
+        'stroke-width':2.2, 'stroke-linejoin':'round', 'stroke-linecap':'round', 'stroke-opacity':.85 }));
+      seg = [];
+    };
+    rows.forEach((r, i) => { const p = s.p(r); if (p == null) flush(); else seg.push(`${x(i).toFixed(1)},${y(p).toFixed(1)}`); });
+    flush();
+  });
+  SERIES.forEach(s => rows.forEach((r, i) => {
+    const p = s.p(r); if (p == null) return;
+    const a = { fill:zvar(zone(p)), stroke:'var(--surface)', 'stroke-width':2 };
+    svg.append(s.shape === 'circle' ? mk('circle', { cx:x(i), cy:y(p), r:rad, ...a })
+      : mk('rect', { x:x(i) - rad, y:y(p) - rad, width:rad * 2, height:rad * 2, rx:1.5, ...a }));
+  }));
 
   // курсор
   const cross = mk('line', { y1:T, y2:T + ih, stroke:'var(--ink-3)', 'stroke-width':1, 'stroke-dasharray':'3 3', opacity:0 });
-  const ring  = mk('circle', { r:rad + 3, fill:'none', stroke:'var(--ink)', 'stroke-width':1.5, opacity:0 });
-  svg.append(cross, ring);
+  const rings = SERIES.map(() => mk('circle', { r:rad + 3.5, fill:'none', stroke:'var(--ink)', 'stroke-width':1.5, opacity:0 }));
+  svg.append(cross, ...rings);
   svg.append(mk('rect', { x:L, y:0, width:iw, height:H, fill:'transparent' }));
 
   return {
@@ -334,11 +325,13 @@ function track(rows, def, W, step) {
     },
     mark(i) {
       cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('opacity', .7);
-      const p = def.p(rows[i]);
-      if (p == null) ring.setAttribute('opacity', 0);
-      else { ring.setAttribute('cx', x(i)); ring.setAttribute('cy', y(p)); ring.setAttribute('opacity', .5); }
+      SERIES.forEach((s, k) => {
+        const p = s.p(rows[i]);
+        if (p == null) rings[k].setAttribute('opacity', 0);
+        else { rings[k].setAttribute('cx', x(i)); rings[k].setAttribute('cy', y(p)); rings[k].setAttribute('opacity', .55); }
+      });
     },
-    clear() { cross.setAttribute('opacity', 0); ring.setAttribute('opacity', 0); }
+    clear() { cross.setAttribute('opacity', 0); rings.forEach(r => r.setAttribute('opacity', 0)); }
   };
 }
 
@@ -365,7 +358,10 @@ function tipHtml(r, step) {
   if (r.task) {
     h += row('Задачи', zone(r.taskP), `${r.task.d} из ${r.task.t} · ${pctS(r.taskP)}`);
     if (step !== 'day' && r.noplan) h += miss(`ещё ${r.noplan} ${plural(r.noplan,['день','дня','дней'])} без плана`);
-  } else h += row('Задачи', null, r.noplan ? 'не ставились' : 'нет данных');
+  } else if (r.noplan) {
+    h += row('Задачи', 'red', '0%');
+    h += miss('задачи не ставились');
+  } else h += row('Задачи', null, 'нет данных');
   return h;
 }
 
@@ -603,7 +599,7 @@ function renderMark() {
     inp.onchange  = () => set(parseFloat(inp.value));
     r.append(minus, inp, plus); w.append(r); tb.append(w);
   });
-  tb.append(el('div','steps__note', '0 поставленных — день без плана: на графике будет разрыв, а не 0%'));
+  tb.append(el('div','steps__note', '0 поставленных — день без плана: на графике будет 0%'));
 
   // сохранение
   const bar = $('#saveBar'); bar.innerHTML = '';
