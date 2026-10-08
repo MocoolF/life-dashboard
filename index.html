@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1A2126">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-title" content="Продуктивность">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="robots" content="noindex, nofollow">
+<title>Продуктивность</title>
+<link rel="stylesheet" href="assets/style.css?v=96332925">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar__in">
+    <div class="brand">
+      <span class="brand__name">Продуктивность</span>
+      <span class="brand__sub">привычки и задачи</span>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button class="tab is-active" data-tab="dyn">Динамика</button>
+      <button class="tab" data-tab="mark">Отметить</button>
+    </nav>
+    <button class="icon-btn" id="themeBtn" title="Тема" aria-label="Переключить тему">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<div class="filters">
+  <div class="filters__in">
+    <div class="ctrl" id="dateCtrl">
+      <button class="ctrl__btn" id="dateBtn">
+        <svg class="ctrl__ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>
+        </svg>
+        <span id="dateLabel">—</span>
+        <svg class="ctrl__caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="pop pop--date" id="datePop" hidden></div>
+    </div>
+    <div class="quick" id="quick"></div>
+    <div class="filters__spacer"></div>
+    <div class="updated" id="updated"></div>
+  </div>
+</div>
+
+<main class="wrap" id="view-dyn">
+  <section class="top" id="top"></section>
+
+  <section class="card">
+    <div class="card__head card__head--row">
+      <div>
+        <h2 class="card__title">Таймлайн</h2>
+        <p class="card__hint" id="dynHint"></p>
+      </div>
+      <div class="zl" id="zoneLegend"></div>
+    </div>
+    <div class="tl" id="timeline"></div>
+  </section>
+
+  <footer class="foot">
+    Зоны: красная — меньше 50%, голубая — 50–75%, зелёная — 75% и выше
+    · <span id="build">сборка 08.10 16:46 · 96332925</span>
+  </footer>
+</main>
+
+<main class="wrap wrap--narrow" id="view-mark" hidden>
+  <section class="card" id="authCard"></section>
+
+  <section class="card">
+    <div class="day" id="dayNav"></div>
+  </section>
+
+  <section class="card">
+    <div class="card__head card__head--row">
+      <h2 class="card__title">Привычки</h2>
+      <span class="pill" id="habPill"></span>
+    </div>
+    <div class="hl" id="habList"></div>
+  </section>
+
+  <section class="card">
+    <div class="card__head card__head--row">
+      <h2 class="card__title">Задачи</h2>
+      <span class="pill" id="taskPill"></span>
+    </div>
+    <div class="steps" id="taskBox"></div>
+  </section>
+
+  <div class="savebar" id="saveBar"></div>
+
+  <section class="card">
+    <details class="mng" id="mng">
+      <summary class="card__title">Мои привычки</summary>
+      <p class="card__hint">Отключённая привычка пропадает из отметок, но остаётся в истории — старые проценты не пересчитываются</p>
+      <div id="mngBox"></div>
+    </details>
+  </section>
+</main>
+
+<div class="tip" id="tip" hidden></div>
+
+<script src="assets/app.js?v=96332925"></script>
+</body>
+</html>

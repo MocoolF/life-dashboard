@@ -1,0 +1,12 @@
+[
+ {"id": "wake", "name": "Подъём в 7:00", "active": true},
+ {"id": "run", "name": "Бег утром", "active": true},
+ {"id": "math", "name": "Математика ≥ 3 задачи", "active": true},
+ {"id": "physics", "name": "Физика 1 час", "active": true},
+ {"id": "ritual", "name": "Ритуал (привычки, задачи, цели)", "active": true},
+ {"id": "calendar", "name": "Жизнь по календарю (циклы)", "active": true},
+ {"id": "nosocial", "name": "Без соцсетей (только ролик)", "active": true},
+ {"id": "book", "name": "Книга всегда с собой", "active": true},
+ {"id": "video", "name": "Выложить видео", "active": true},
+ {"id": "sleep", "name": "Отбой в 22:00 (ГСЧ + медитация)", "active": true}
+]
