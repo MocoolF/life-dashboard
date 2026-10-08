@@ -315,11 +315,6 @@ function tipHtml(r, step, show = ['hab','task']) {
   if (!show.includes('hab')) ;
   else if (r.hab) {
     h += row('Привычки', zone(r.habP), `${r.hab.d} из ${r.hab.t} · ${pctS(r.habP)}`);
-    const m = [...r.miss].sort((a,b) => b[1] - a[1]);
-    if (m.length) h += miss(step === 'day'
-      ? 'пропущено: ' + m.map(([id]) => esc(habitName(id))).join(', ')
-      : 'чаще пропускал: ' + m.slice(0, 3).map(([id, c]) => `${esc(habitName(id))} (${c})`).join(', '));
-    else h += miss('все привычки выполнены');
   } else h += row('Привычки', null, 'нет отметки');
 
   if (!show.includes('task')) ;
@@ -332,7 +327,7 @@ function tipHtml(r, step, show = ['hab','task']) {
 
 /* ===================== date picker ===================== */
 const PRESETS = [
-  ['week','Текущая неделя',    () => [mondayOf(TODAY), TODAY]],
+  ['week','Текущая неделя',    () => [mondayOf(TODAY), addD(mondayOf(TODAY), 6)]],   // вся неделя пн–вс, будущие дни пустые
   ['d7','Последние 7 дней',    () => [addD(TODAY,-6), TODAY]],
   ['d30','Последние 30 дней',  () => [addD(TODAY,-29), TODAY]],
   ['month','Текущий месяц',    () => [monStart(TODAY), TODAY]],
