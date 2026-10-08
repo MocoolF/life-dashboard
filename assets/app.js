@@ -45,6 +45,7 @@ const zvar = z => `var(--z-${z})`;
 const S = {
   habits: [], days: [], byDate: new Map(),
   from: monStart(TODAY), to: TODAY, preset: 'month', tab: 'dyn',
+  show: (() => { try { return localStorage.getItem('life-show') || 'both'; } catch { return 'both'; } })(),   // что рисовать на таймлайне
   M: null,          // черновик отмечаемого дня
   edit: null        // черновик списка привычек
 };
@@ -218,12 +219,23 @@ function renderTimeline() {
 
   const box = $('#timeline'); box.innerHTML = '';
   const width = Math.max(280, box.clientWidth || 600);
-  const hasLegacy = rows.some(r => r.habEst);
-  box.append(el('div','tl__lg', SERIES.map(s => `<span class="tl__li">${markerSvg(s)}<b>${s.title}</b>
+  const vis = SERIES.filter(s => S.show === 'both' || S.show === s.id);
+  const hasLegacy = vis.some(s => s.id === 'hab') && rows.some(r => r.habEst);
+
+  // переключатель серий: одним кликом оставить только привычки или только задачи
+  const sw = el('div','quick tl__sw');
+  [['both','Обе'], ['hab','Привычки'], ['task','Задачи']].forEach(([id, name]) => {
+    const b = el('button','quick__b' + (S.show === id ? ' is-on' : ''), name);
+    b.onclick = () => { S.show = id; try { localStorage.setItem('life-show', id); } catch {} renderTimeline(); };
+    sw.append(b);
+  });
+  box.append(sw);
+
+  box.append(el('div','tl__lg', vis.map(s => `<span class="tl__li">${markerSvg(s)}<b>${s.title}</b>
     <span class="tl__lp">за период ${pctS(s.p(tot))}</span></span>`).join('')
     + (hasLegacy ? `<span class="tl__li tl__li--note"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="none" stroke="var(--ink-3)" stroke-width="2"/></svg>привычки из таблицы — нижняя граница зоны</span>` : '')));
 
-  const ch = chart(rows, width);
+  const ch = chart(rows, width, vis);
   box.append(ch.svg);
 
   const tip = $('#tip');
@@ -232,7 +244,7 @@ function renderTimeline() {
     const i = ch.index(pt.clientX);
     if (i == null) return out();
     ch.mark(i);
-    tip.innerHTML = tipHtml(rows[i], step);
+    tip.innerHTML = tipHtml(rows[i], step, vis.map(s => s.id));
     tip.hidden = false;
     const tw = tip.offsetWidth, th = tip.offsetHeight;
     tip.style.left = Math.max(8, Math.min(innerWidth - tw - 8, pt.clientX - tw/2)) + 'px';
@@ -257,7 +269,7 @@ function markerSvg(s) {
       : `<rect x="8.5" y="1.5" width="9" height="9" rx="2" fill="${s.line}" stroke="var(--surface)" stroke-width="1.5"/>`}</svg>`;
 }
 
-function chart(rows, W) {
+function chart(rows, W, series) {
   const H = W < 520 ? 300 : 380, L = 38, R = 8, T = 10, B = 24;
   const iw = W - L - R, ih = H - T - B, n = rows.length, slot = iw / n;
   const svg = mk('svg', { viewBox:`0 0 ${W} ${H}`, width:W, height:H, class:'tl__svg', role:'img', 'aria-label':'Привычки и задачи по дням' });
@@ -284,7 +296,7 @@ function chart(rows, W) {
 
   // линии рвутся только там, где дня нет в данных
   const rad = slot < 6 ? 2.6 : slot < 10 ? 3.4 : 4.8;
-  SERIES.forEach(s => {
+  series.forEach(s => {
     let seg = [];
     const flush = () => {
       if (seg.length > 1) svg.append(mk('polyline', { points:seg.join(' '), fill:'none', stroke:s.line,
@@ -294,7 +306,7 @@ function chart(rows, W) {
     rows.forEach((r, i) => { const p = s.p(r); if (p == null) flush(); else seg.push(`${x(i).toFixed(1)},${y(p).toFixed(1)}`); });
     flush();
   });
-  SERIES.forEach(s => rows.forEach((r, i) => {
+  series.forEach(s => rows.forEach((r, i) => {
     const p = s.p(r); if (p == null) return;
     const est = s.id === 'hab' && r.habEst;          // из таблицы: полая точка — значение условное
     const a = est ? { fill:'var(--surface)', stroke:zvar(zone(p)), 'stroke-width':2 }
@@ -305,7 +317,7 @@ function chart(rows, W) {
 
   // курсор
   const cross = mk('line', { y1:T, y2:T + ih, stroke:'var(--ink-3)', 'stroke-width':1, 'stroke-dasharray':'3 3', opacity:0 });
-  const rings = SERIES.map(() => mk('circle', { r:rad + 3.5, fill:'none', stroke:'var(--ink)', 'stroke-width':1.5, opacity:0 }));
+  const rings = series.map(() => mk('circle', { r:rad + 3.5, fill:'none', stroke:'var(--ink)', 'stroke-width':1.5, opacity:0 }));
   svg.append(cross, ...rings);
   svg.append(mk('rect', { x:L, y:0, width:iw, height:H, fill:'transparent' }));
 
@@ -319,7 +331,7 @@ function chart(rows, W) {
     },
     mark(i) {
       cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('opacity', .7);
-      SERIES.forEach((s, k) => {
+      series.forEach((s, k) => {
         const p = s.p(rows[i]);
         if (p == null) rings[k].setAttribute('opacity', 0);
         else { rings[k].setAttribute('cx', x(i)); rings[k].setAttribute('cy', y(p)); rings[k].setAttribute('opacity', .55); }
@@ -329,13 +341,14 @@ function chart(rows, W) {
   };
 }
 
-function tipHtml(r, step) {
+function tipHtml(r, step, show = ['hab','task']) {
   const row = (name, z, val) => `<div class="tip__r"><i class="tip__dot" style="background:${z ? zvar(z) : 'rgba(255,255,255,.25)'}"></i>
     <span class="tip__n">${name}</span><b>${val}</b></div>`;
   const miss = t => `<div class="tip__miss">${t}</div>`;
   let h = `<div class="tip__d">${r.title}</div>`;
 
-  if (r.hab) {
+  if (!show.includes('hab')) ;
+  else if (r.hab) {
     h += row('Привычки', zone(r.habP), `${r.hab.d} из ${r.hab.t} · ${pctS(r.habP)}`);
     const m = [...r.miss].sort((a,b) => b[1] - a[1]);
     if (m.length) h += miss(step === 'day'
@@ -348,7 +361,8 @@ function tipHtml(r, step) {
     h += miss(`из таблицы: точных цифр нет, взята нижняя граница зоны (${Z.range})`);
   } else h += row('Привычки', null, 'нет отметки');
 
-  if (r.task) {
+  if (!show.includes('task')) ;
+  else if (r.task) {
     h += row('Задачи', zone(r.taskP), `${r.task.d} из ${r.task.t} · ${pctS(r.taskP)}`);
     if (step !== 'day' && r.noplan) h += miss(`ещё ${r.noplan} ${plural(r.noplan,['день','дня','дней'])} без плана`);
   } else if (r.noplan) {

@@ -144,6 +144,7 @@ html[data-theme="dark"]{ --z-red:#e66767; --z-blue:#2b98cc; --z-green:#22a876;
 
 /* ---------- таймлайн ---------- */
 .tl{display:flex;flex-direction:column;gap:10px}
+.tl__sw{align-self:flex-start}
 .tl__lg{display:flex;gap:8px 22px;flex-wrap:wrap;align-items:center}
 .tl__li{display:flex;align-items:center;gap:7px;font-size:13px}
 .tl__li b{font-weight:600}
