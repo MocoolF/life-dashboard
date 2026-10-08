@@ -122,7 +122,7 @@ function dayFacts(rec) {
   const f = { task:null, noplan:0, hab:null, hz:null };
   if (!rec) return f;
   if (rec.planned > 0) f.task = { d: rec.done || 0, t: rec.planned };
-  else if (rec.planned === 0) f.noplan = 1;
+  else if (rec.planned === 0) { f.task = { d:0, t:1 }; f.noplan = 1; }   // не распланировал день = 0 из 1
   if (rec.h) {
     const ids = Object.keys(rec.h);
     if (ids.length) f.hab = { d: ids.filter(i => rec.h[i]).length, t: ids.length, miss: ids.filter(i => !rec.h[i]) };
@@ -142,7 +142,6 @@ function fold(dates) {
       o.taskZ[zone(pct(f.task.d, f.task.t))]++;
     }
     o.noplan += f.noplan;
-    if (f.noplan) o.taskZ.red++;                      // день без плана считается красным
     if (f.hab) {
       o.hab = o.hab || { d:0, t:0 };
       o.hab.d += f.hab.d; o.hab.t += f.hab.t;
@@ -167,7 +166,6 @@ function buildRows(from, to) {
   // таймлайн всегда по дням, при любом периоде
   const rows = datesOf(from, to).map(d => {
     const o = fold([d]);
-    if (o.taskP == null && o.noplan) o.taskP = 0;     // задачи не ставились — на графике 0%
     if (o.habP == null && o.hz) { o.habP = ZONES.find(z => z.id === o.hz).lo; o.habEst = true; }   // из таблицы — нижняя граница зоны
     return { a:d, b:d, ...o, label: short(d), title: dayName(d) };
   });
@@ -178,32 +176,20 @@ function buildRows(from, to) {
 function renderTop() {
   const f = fold(datesOf(S.from, S.to));
   const box = $('#top'); box.innerHTML = '';
-  const legacyDays = f.hzc.red + f.hzc.blue + f.hzc.green;
   box.append(
-    bigCard('Привычки', f.habP, f.hab ? `${f.hab.d} из ${f.hab.t} ${plural(f.hab.t,['отметки','отметок','отметок'])}`
-      : legacyDays ? 'в периоде только данные из таблицы' : 'нет отметок', f.habZ,
-      legacyDays && f.hab ? `${legacyDays} ${plural(legacyDays,['день','дня','дней'])} — только зона` : ''),
-    bigCard('Задачи', f.taskP, f.task ? `${f.task.d} из ${f.task.t} ${plural(f.task.t,['задачи','задач','задач'])}` : 'нет данных', f.taskZ,
-      f.noplan ? `${f.noplan} ${plural(f.noplan,['день','дня','дней'])} без плана` : '')
+    bigCard('Привычки', f.habP, f.hab ? `${f.hab.d} из ${f.hab.t} ${plural(f.hab.t,['отметки','отметок','отметок'])}` : 'нет отметок'),
+    bigCard('Задачи', f.taskP, f.task ? `${f.task.d} из ${f.task.t} ${plural(f.task.t,['задачи','задач','задач'])}` : 'нет данных')
   );
 }
 
-function bigCard(name, p, of, zc, extra) {
+function bigCard(name, p, of) {
   const z = zone(p);
-  const tot = zc.red + zc.blue + zc.green;
-  const c = el('div','big');
-  c.innerHTML = `
+  return el('div','big', `
     <div class="big__name">${name}</div>
     <div class="big__row">
       <span class="big__val ${z ? 'z-' + z : 'is-none'}">${pctS(p)}</span>
       <span class="big__of">${of}</span>
-    </div>
-    <div class="zbar" title="Дни по зонам">${tot ? ['red','blue','green'].filter(k => zc[k])
-      .map(k => `<i class="${k[0]}" style="flex-grow:${zc[k]}"></i>`).join('') : ''}</div>
-    <div class="zcnt">${ZONES.map(Z => `<span><i class="zcnt__d" style="background:${zvar(Z.id)}"></i><b>${zc[Z.id]}</b> ${
-      plural(zc[Z.id], { red:['красный','красных','красных'], blue:['голубой','голубых','голубых'], green:['зелёный','зелёных','зелёных'] }[Z.id])}</span>`).join('')}
-      ${extra ? `<span>· ${extra}</span>` : ''}</div>`;
-  return c;
+    </div>`);
 }
 
 /* ===================== таймлайн ===================== */
@@ -212,28 +198,21 @@ const mk = (t, a) => { const n = document.createElementNS(SVGNS, t); for (const 
 
 function renderTimeline() {
   const { rows, step } = buildRows(S.from, S.to);
-  const tot = fold(datesOf(S.from, S.to));
   $('#dynHint').textContent = `${span(S.from, S.to)} · по дням`;
-  $('#zoneLegend').innerHTML = ZONES.map(Z =>
-    `<span class="zl__i"><i class="zl__d" style="background:${zvar(Z.id)}"></i>${Z.range}</span>`).join('');
 
   const box = $('#timeline'); box.innerHTML = '';
   const width = Math.max(280, box.clientWidth || 600);
   const vis = SERIES.filter(s => S.show === 'both' || S.show === s.id);
-  const hasLegacy = vis.some(s => s.id === 'hab') && rows.some(r => r.habEst);
 
   // переключатель серий: одним кликом оставить только привычки или только задачи
   const sw = el('div','quick tl__sw');
   [['both','Обе'], ['hab','Привычки'], ['task','Задачи']].forEach(([id, name]) => {
-    const b = el('button','quick__b' + (S.show === id ? ' is-on' : ''), name);
+    const ser = SERIES.find(s => s.id === id);       // значок линии в кнопке вместо отдельной легенды
+    const b = el('button','quick__b' + (S.show === id ? ' is-on' : ''), (ser ? markerSvg(ser) : '') + name);
     b.onclick = () => { S.show = id; try { localStorage.setItem('life-show', id); } catch {} renderTimeline(); };
     sw.append(b);
   });
   box.append(sw);
-
-  box.append(el('div','tl__lg', vis.map(s => `<span class="tl__li">${markerSvg(s)}<b>${s.title}</b>
-    <span class="tl__lp">за период ${pctS(s.p(tot))}</span></span>`).join('')
-    + (hasLegacy ? `<span class="tl__li tl__li--note"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="none" stroke="var(--ink-3)" stroke-width="2"/></svg>привычки из таблицы — нижняя граница зоны</span>` : '')));
 
   const ch = chart(rows, width, vis);
   box.append(ch.svg);
@@ -364,10 +343,7 @@ function tipHtml(r, step, show = ['hab','task']) {
   if (!show.includes('task')) ;
   else if (r.task) {
     h += row('Задачи', zone(r.taskP), `${r.task.d} из ${r.task.t} · ${pctS(r.taskP)}`);
-    if (step !== 'day' && r.noplan) h += miss(`ещё ${r.noplan} ${plural(r.noplan,['день','дня','дней'])} без плана`);
-  } else if (r.noplan) {
-    h += row('Задачи', 'red', '0%');
-    h += miss('задачи не ставились');
+    if (r.noplan) h += miss('день не распланирован');
   } else h += row('Задачи', null, 'нет данных');
   return h;
 }
@@ -587,7 +563,7 @@ function renderMark() {
 
   // задачи
   const showT = M.planned > 0;
-  setPill('#taskPill', showT ? pct(M.done, M.planned) : null, showT ? `${M.done}/${M.planned} · ${pctS(pct(M.done, M.planned))}` : 'не ставились');
+  setPill('#taskPill', showT ? pct(M.done, M.planned) : 0, showT ? `${M.done}/${M.planned} · ${pctS(pct(M.done, M.planned))}` : 'не распланирован · 0%');
   const tb = $('#taskBox'); tb.innerHTML = '';
   [['planned','Поставлено'], ['done','Сделано']].forEach(([k, name]) => {
     const w = el('div','st', `<div class="st__l">${name}</div>`);
@@ -606,7 +582,7 @@ function renderMark() {
     inp.onchange  = () => set(parseFloat(inp.value));
     r.append(minus, inp, plus); w.append(r); tb.append(w);
   });
-  tb.append(el('div','steps__note', '0 поставленных — день без плана: на графике будет 0%'));
+  tb.append(el('div','steps__note', '0 поставленных — день не распланирован: считается как 0 из 1'));
 
   // сохранение
   const bar = $('#saveBar'); bar.innerHTML = '';
@@ -635,7 +611,7 @@ async function saveDay(btn) {
   const hd = patch.h ? Object.values(patch.h).filter(Boolean).length : null;
   const msg = [short(M.date),
     patch.h && `привычки ${hd}/${Object.keys(patch.h).length}`,
-    patch.planned != null && (patch.planned ? `задачи ${patch.done}/${patch.planned}` : 'задачи не ставились')].filter(Boolean).join(' · ');
+    patch.planned != null && (patch.planned ? `задачи ${patch.done}/${patch.planned}` : 'день не распланирован')].filter(Boolean).join(' · ');
   try {
     busy(btn, true);
     const next = await ghSave(FILES.days, days => {
