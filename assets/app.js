@@ -194,7 +194,7 @@ function renderTimeline() {
   const box = $('#timeline'); box.innerHTML = '';
   const width = Math.max(280, box.clientWidth || 600);
   const vis = SERIES.filter(s => S.view[s.id]);
-  if (!vis.length) { box.append(el('div','empty','Ничего не выбрано — отметь «Привычки» или «Задачи» в меню рядом с календарём')); return; }
+  if (!vis.length) { box.append(el('div','empty','Ничего не выбрано — отметь «Привычки» или «Задачи» выше')); return; }
 
   const ch = chart(rows, width, vis);
   box.append(ch.svg);
@@ -449,40 +449,27 @@ const VIEW_ITEMS = [
   ['hab',   'Привычки'],
   ['task',  'Задачи'],
   null,
-  ['lines', 'Линии между точками'],
-  ['zones', 'Цветные зоны']
+  ['lines', 'Линии'],
+  ['zones', 'Зоны']
 ];
-function initView() {
-  const ctrl = $('#viewCtrl'), btn = $('#viewBtn'), pop = $('#viewPop');
-  btn.onclick = e => {
-    e.stopPropagation();
-    const open = !pop.hidden;
-    closeAll();
-    if (!open) { pop.hidden = false; ctrl.classList.add('is-open'); drawView(); }
-  };
-  pop.onclick = e => e.stopPropagation();
-  viewLabel();
-}
-function viewLabel() {
-  const on = SERIES.filter(s => S.view[s.id]);
-  $('#viewLabel').textContent = on.length === 2 ? 'Привычки и задачи' : on.length ? on[0].title : 'Ничего не выбрано';
-}
+/* галочки прямо в шапке таймлайна */
+function initView() { drawView(); }
 function drawView() {
-  const pop = $('#viewPop'); pop.innerHTML = '';
+  const box = $('#viewChecks'); box.innerHTML = '';
   VIEW_ITEMS.forEach(it => {
-    if (!it) { pop.append(el('div','chan__sep')); return; }
+    if (!it) { box.append(el('span','vchk__sep')); return; }
     const [k, name] = it;
     const ser = SERIES.find(s => s.id === k);
-    const row = el('label','chan__row' + (S.view[k] ? ' on' : ''), `
+    const row = el('button','chan__row vchk__i' + (S.view[k] ? ' on' : ''), `
       <span class="chan__box"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M5 13l4 4L19 7"/></svg></span>
-      <span>${name}</span>${ser ? `<span class="chan__n">${markerSvg(ser)}</span>` : ''}`);
-    row.onclick = e => {
-      e.preventDefault();
+      ${ser ? markerSvg(ser) : ''}<span>${name}</span>`);
+    row.setAttribute('aria-pressed', S.view[k]);
+    row.onclick = () => {
       S.view[k] = !S.view[k];
       try { localStorage.setItem('life-view', JSON.stringify(S.view)); } catch {}
-      drawView(); viewLabel(); renderTimeline();
+      drawView(); renderTimeline();
     };
-    pop.append(row);
+    box.append(row);
   });
 }
 

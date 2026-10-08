@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="robots" content="noindex, nofollow">
 <title>Продуктивность</title>
-<link rel="stylesheet" href="assets/style.css?v=cd34f705">
+<link rel="stylesheet" href="assets/style.css?v=247f42d9">
 </head>
 <body>
 
@@ -48,16 +48,6 @@
       </button>
       <div class="pop pop--date" id="datePop" hidden></div>
     </div>
-    <div class="ctrl" id="viewCtrl">
-      <button class="ctrl__btn" id="viewBtn">
-        <svg class="ctrl__ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-          <path d="M3 5h18M6 12h12M10 19h4"/>
-        </svg>
-        <span id="viewLabel">Привычки и задачи</span>
-        <svg class="ctrl__caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg>
-      </button>
-      <div class="pop pop--chan" id="viewPop" hidden></div>
-    </div>
     <div class="quick" id="quick"></div>
     <div class="filters__spacer"></div>
     <div class="updated" id="updated"></div>
@@ -68,16 +58,19 @@
   <section class="top" id="top"></section>
 
   <section class="card">
-    <div class="card__head">
-      <h2 class="card__title">Таймлайн</h2>
-      <p class="card__hint" id="dynHint"></p>
+    <div class="card__head card__head--row tl__top">
+      <div>
+        <h2 class="card__title">Таймлайн</h2>
+        <p class="card__hint" id="dynHint"></p>
+      </div>
+      <div class="vchk" id="viewChecks"></div>
     </div>
     <div class="tl" id="timeline"></div>
   </section>
 
   <footer class="foot">
     Зоны: красная — меньше 50%, голубая — 50–75%, зелёная — 75% и выше
-    · <span id="build">сборка 08.10 17:23 · cd34f705</span>
+    · <span id="build">сборка 08.10 17:25 · 247f42d9</span>
   </footer>
 </main>
 
@@ -117,6 +110,6 @@
 
 <div class="tip" id="tip" hidden></div>
 
-<script src="assets/app.js?v=cd34f705"></script>
+<script src="assets/app.js?v=247f42d9"></script>
 </body>
 </html>

@@ -134,16 +134,18 @@ html[data-theme="dark"]{ --z-red:#e66767; --z-blue:#2b98cc; --z-green:#22a876;
 
 /* ---------- таймлайн ---------- */
 .tl{display:flex;flex-direction:column;gap:10px}
-/* меню «Вид» — как фильтр каналов в агентском дашборде */
-.pop--chan{min-width:250px}
-.chan__row{display:flex;align-items:center;gap:9px;padding:8px;border-radius:7px;cursor:pointer;font-size:13px;user-select:none}
-.chan__row:hover{background:var(--line-2)}
+/* галочки в шапке таймлайна */
+.tl__top{align-items:center}
+.vchk{display:flex;align-items:center;flex-wrap:wrap;gap:2px 4px;margin-right:auto;margin-left:16px}
+.chan__row{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;cursor:pointer;font-size:13px;user-select:none;color:var(--ink-2)}
+.chan__row:hover{background:var(--line-2);color:var(--ink)}
+.chan__row.on{color:var(--ink)}
 .chan__box{width:16px;height:16px;border-radius:5px;border:1.6px solid var(--line);flex:none;display:grid;place-items:center}
 .chan__row.on .chan__box{background:var(--brand);border-color:var(--brand)}
 .chan__box svg{display:none;color:#fff}
 .chan__row.on .chan__box svg{display:block}
-.chan__n{margin-left:auto;display:flex}
-.chan__sep{height:1px;background:var(--line);margin:6px 2px}
+.vchk__sep{width:1px;height:18px;background:var(--line);margin:0 6px}
+@media (max-width:640px){ .vchk{margin-left:-9px;width:100%} .chan__row{padding:7px 8px;font-size:12.5px} .vchk__sep{margin:0 2px} }
 .tl__svg{width:100%;display:block;touch-action:pan-y;overflow:visible}
 
 /* ---------- tooltip ---------- */
