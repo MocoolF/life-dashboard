@@ -167,6 +167,7 @@ function buildRows(from, to) {
   const rows = datesOf(from, to).map(d => {
     const o = fold([d]);
     if (o.taskP == null && o.noplan) o.taskP = 0;     // задачи не ставились — на графике 0%
+    if (o.habP == null && o.hz) { o.habP = ZONES.find(z => z.id === o.hz).lo; o.habEst = true; }   // из таблицы — нижняя граница зоны
     return { a:d, b:d, ...o, label: short(d), title: dayName(d) };
   });
   return { rows, step:'day' };
@@ -217,10 +218,10 @@ function renderTimeline() {
 
   const box = $('#timeline'); box.innerHTML = '';
   const width = Math.max(280, box.clientWidth || 600);
-  const hasLegacy = rows.some(r => !r.hab && r.hz);
+  const hasLegacy = rows.some(r => r.habEst);
   box.append(el('div','tl__lg', SERIES.map(s => `<span class="tl__li">${markerSvg(s)}<b>${s.title}</b>
     <span class="tl__lp">за период ${pctS(s.p(tot))}</span></span>`).join('')
-    + (hasLegacy ? `<span class="tl__li tl__li--note"><i class="tl__ghost"></i>привычки из таблицы — известна только зона</span>` : '')));
+    + (hasLegacy ? `<span class="tl__li tl__li--note"><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="none" stroke="var(--ink-3)" stroke-width="2"/></svg>привычки из таблицы — нижняя граница зоны</span>` : '')));
 
   const ch = chart(rows, width);
   box.append(ch.svg);
@@ -281,15 +282,6 @@ function chart(rows, W) {
     t.textContent = r.label; svg.append(t);
   });
 
-  // привычки из таблицы: столбик во всю высоту зоны
-  const cw = Math.max(2, Math.min(slot * .62, 18));
-  rows.forEach((r, i) => {
-    if (r.habP != null || !r.hz) return;
-    const Z = ZONES.find(q => q.id === r.hz);
-    svg.append(mk('rect', { x:x(i) - cw/2, width:cw, y:y(Z.hi) + 1.5, height:y(Z.lo) - y(Z.hi) - 3, rx:Math.min(3, cw/2),
-      fill:zvar(r.hz), style:'fill-opacity:var(--ghost)' }));
-  });
-
   // линии рвутся только там, где дня нет в данных
   const rad = slot < 6 ? 2.6 : slot < 10 ? 3.4 : 4.8;
   SERIES.forEach(s => {
@@ -304,7 +296,9 @@ function chart(rows, W) {
   });
   SERIES.forEach(s => rows.forEach((r, i) => {
     const p = s.p(r); if (p == null) return;
-    const a = { fill:zvar(zone(p)), stroke:'var(--surface)', 'stroke-width':2 };
+    const est = s.id === 'hab' && r.habEst;          // из таблицы: полая точка — значение условное
+    const a = est ? { fill:'var(--surface)', stroke:zvar(zone(p)), 'stroke-width':2 }
+                  : { fill:zvar(zone(p)), stroke:'var(--surface)', 'stroke-width':2 };
     svg.append(s.shape === 'circle' ? mk('circle', { cx:x(i), cy:y(p), r:rad, ...a })
       : mk('rect', { x:x(i) - rad, y:y(p) - rad, width:rad * 2, height:rad * 2, rx:1.5, ...a }));
   }));
@@ -350,9 +344,8 @@ function tipHtml(r, step) {
     else h += miss('все привычки выполнены');
   } else if (r.hz) {
     const Z = ZONES.find(q => q.id === r.hz);
-    h += row('Привычки', r.hz, `${Z.name.toLowerCase()} зона`);
-    const parts = ZONES.filter(q => r.hzc[q.id]).map(q => `${r.hzc[q.id]} ${q.name.toLowerCase().slice(0,-2)}${plural(r.hzc[q.id],['ая','ых','ых'])}`);
-    h += miss(step === 'day' ? `${Z.range} · из таблицы, точных цифр нет` : `из таблицы: ${parts.join(', ')}`);
+    h += row('Привычки', r.hz, `${Z.name.toLowerCase()} зона · ${Z.lo}%`);
+    h += miss(`из таблицы: точных цифр нет, взята нижняя граница зоны (${Z.range})`);
   } else h += row('Привычки', null, 'нет отметки');
 
   if (r.task) {

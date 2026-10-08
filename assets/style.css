@@ -108,9 +108,9 @@ html[data-theme="dark"] .quick__b.is-on{box-shadow:none}
 
 /* ---------- зоны ---------- */
 :root{ --z-red:#e34948; --z-blue:#1f9fd6; --z-green:#14a571;
-  --band-red:.15; --band-blue:.17; --band-green:.17; --ghost:.5; --l-hab:#24323A; --l-task:#7B5BE6 }
+  --band-red:.15; --band-blue:.17; --band-green:.17; --l-hab:#24323A; --l-task:#7B5BE6 }
 html[data-theme="dark"]{ --z-red:#e66767; --z-blue:#2b98cc; --z-green:#22a876;
-  --band-red:.2; --band-blue:.22; --band-green:.2; --ghost:.55; --l-hab:#EEF2F4; --l-task:#A893FF }
+  --band-red:.2; --band-blue:.22; --band-green:.2; --l-hab:#EEF2F4; --l-task:#A893FF }
 .z-red{color:var(--z-red)} .z-blue{color:var(--z-blue)} .z-green{color:var(--z-green)}
 
 /* ---------- layout ---------- */
@@ -149,7 +149,6 @@ html[data-theme="dark"]{ --z-red:#e66767; --z-blue:#2b98cc; --z-green:#22a876;
 .tl__li b{font-weight:600}
 .tl__lp{color:var(--ink-3);font-size:12px;font-variant-numeric:tabular-nums}
 .tl__li--note{font-size:11.5px;color:var(--ink-3);margin-left:auto}
-.tl__ghost{width:8px;height:14px;border-radius:2px;background:linear-gradient(var(--z-blue) 50%,var(--z-red) 50%);opacity:.6}
 .tl__svg{width:100%;display:block;touch-action:pan-y;overflow:visible}
 
 /* ---------- tooltip ---------- */
