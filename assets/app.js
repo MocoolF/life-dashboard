@@ -119,42 +119,33 @@ function render() {
 /* ===================== расчёты ===================== */
 /* один день → что о нём известно */
 function dayFacts(rec) {
-  const f = { task:null, noplan:0, hab:null, hz:null };
+  const f = { task:null, noplan:0, hab:null };
   if (!rec) return f;
   if (rec.planned > 0) f.task = { d: rec.done || 0, t: rec.planned };
   else if (rec.planned === 0) { f.task = { d:0, t:1 }; f.noplan = 1; }   // не распланировал день = 0 из 1
   if (rec.h) {
     const ids = Object.keys(rec.h);
     if (ids.length) f.hab = { d: ids.filter(i => rec.h[i]).length, t: ids.length, miss: ids.filter(i => !rec.h[i]) };
-  } else if (rec.hz) f.hz = rec.hz;
+  }
   return f;
 }
 
 /* свёртка нескольких дней в одну точку: суммы, а не среднее процентов */
 function fold(dates) {
-  const o = { task:null, noplan:0, hab:null, miss:new Map(), hzc:{red:0,blue:0,green:0}, hz:null,
-              taskZ:{red:0,blue:0,green:0}, habZ:{red:0,blue:0,green:0} };
+  const o = { task:null, noplan:0, hab:null, miss:new Map() };
   dates.forEach(d => {
     const f = dayFacts(S.byDate.get(d));
     if (f.task) {
       o.task = o.task || { d:0, t:0 };
       o.task.d += f.task.d; o.task.t += f.task.t;
-      o.taskZ[zone(pct(f.task.d, f.task.t))]++;
     }
     o.noplan += f.noplan;
     if (f.hab) {
       o.hab = o.hab || { d:0, t:0 };
       o.hab.d += f.hab.d; o.hab.t += f.hab.t;
       f.hab.miss.forEach(i => o.miss.set(i, (o.miss.get(i) || 0) + 1));
-      o.habZ[zone(pct(f.hab.d, f.hab.t))]++;
     }
-    if (f.hz) { o.hzc[f.hz]++; o.habZ[f.hz]++; }
   });
-  if (!o.hab) {
-    // точных отметок нет — берём зону, которая встречалась чаще (при равенстве — худшую)
-    const best = ['red','blue','green'].reduce((a, z) => o.hzc[z] > (a ? o.hzc[a] : 0) ? z : a, null);
-    o.hz = best;
-  }
   o.habP  = o.hab  ? pct(o.hab.d,  o.hab.t)  : null;
   o.taskP = o.task ? pct(o.task.d, o.task.t) : null;
   return o;
@@ -166,7 +157,6 @@ function buildRows(from, to) {
   // таймлайн всегда по дням, при любом периоде
   const rows = datesOf(from, to).map(d => {
     const o = fold([d]);
-    if (o.habP == null && o.hz) { o.habP = ZONES.find(z => z.id === o.hz).lo; o.habEst = true; }   // из таблицы — нижняя граница зоны
     return { a:d, b:d, ...o, label: short(d), title: dayName(d) };
   });
   return { rows, step:'day' };
@@ -287,9 +277,7 @@ function chart(rows, W, series) {
   });
   series.forEach(s => rows.forEach((r, i) => {
     const p = s.p(r); if (p == null) return;
-    const est = s.id === 'hab' && r.habEst;          // из таблицы: полая точка — значение условное
-    const a = est ? { fill:'var(--surface)', stroke:zvar(zone(p)), 'stroke-width':2 }
-                  : { fill:zvar(zone(p)), stroke:'var(--surface)', 'stroke-width':2 };
+    const a = { fill:zvar(zone(p)), stroke:'var(--surface)', 'stroke-width':2 };
     svg.append(s.shape === 'circle' ? mk('circle', { cx:x(i), cy:y(p), r:rad, ...a })
       : mk('rect', { x:x(i) - rad, y:y(p) - rad, width:rad * 2, height:rad * 2, rx:1.5, ...a }));
   }));
@@ -334,10 +322,6 @@ function tipHtml(r, step, show = ['hab','task']) {
       ? 'пропущено: ' + m.map(([id]) => esc(habitName(id))).join(', ')
       : 'чаще пропускал: ' + m.slice(0, 3).map(([id, c]) => `${esc(habitName(id))} (${c})`).join(', '));
     else h += miss('все привычки выполнены');
-  } else if (r.hz) {
-    const Z = ZONES.find(q => q.id === r.hz);
-    h += row('Привычки', r.hz, `${Z.name.toLowerCase()} зона · ${Z.lo}%`);
-    h += miss(`из таблицы: точных цифр нет, взята нижняя граница зоны (${Z.range})`);
   } else h += row('Привычки', null, 'нет отметки');
 
   if (!show.includes('task')) ;
@@ -549,10 +533,6 @@ function renderMark() {
   const showH = M.hTouched || M.rec?.h;
   setPill('#habPill', showH ? pct(hd, ht) : null, showH ? `${hd}/${ht} · ${pctS(pct(hd, ht))}` : `0/${ht}`);
   const list = $('#habList'); list.innerHTML = '';
-  if (M.rec?.hz && !M.rec.h && !M.hTouched) {
-    const Z = ZONES.find(q => q.id === M.rec.hz);
-    list.append(el('div','hl__note', `По таблице этот день в зоне «${Z.name.toLowerCase()}» (${Z.range}). Отметишь привычки — зона заменится точными цифрами.`));
-  }
   M.ids.forEach(id => {
     const b = el('button','hb' + (M.h[id] ? ' on' : ''), `
       <span class="hb__box"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="M5 13l4 4L19 7"/></svg></span>
@@ -617,7 +597,6 @@ async function saveDay(btn) {
     const next = await ghSave(FILES.days, days => {
       const old = days.find(d => d.date === M.date) || {};
       const rec = { date: M.date, ...old, ...patch };
-      if (rec.h) delete rec.hz;                 // точные отметки заменяют зону из таблицы
       return [...days.filter(d => d.date !== M.date), rec].sort((a,b) => a.date.localeCompare(b.date));
     }, msg);
     setData(S.habits, next);
