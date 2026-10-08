@@ -134,9 +134,16 @@ html[data-theme="dark"]{ --z-red:#e66767; --z-blue:#2b98cc; --z-green:#22a876;
 
 /* ---------- таймлайн ---------- */
 .tl{display:flex;flex-direction:column;gap:10px}
-.tl__sw{align-self:flex-start}
-.tl__sw .quick__b{display:flex;align-items:center;gap:7px}
-.tl__sw svg{flex:none}
+/* меню «Вид» — как фильтр каналов в агентском дашборде */
+.pop--chan{min-width:250px}
+.chan__row{display:flex;align-items:center;gap:9px;padding:8px;border-radius:7px;cursor:pointer;font-size:13px;user-select:none}
+.chan__row:hover{background:var(--line-2)}
+.chan__box{width:16px;height:16px;border-radius:5px;border:1.6px solid var(--line);flex:none;display:grid;place-items:center}
+.chan__row.on .chan__box{background:var(--brand);border-color:var(--brand)}
+.chan__box svg{display:none;color:#fff}
+.chan__row.on .chan__box svg{display:block}
+.chan__n{margin-left:auto;display:flex}
+.chan__sep{height:1px;background:var(--line);margin:6px 2px}
 .tl__svg{width:100%;display:block;touch-action:pan-y;overflow:visible}
 
 /* ---------- tooltip ---------- */

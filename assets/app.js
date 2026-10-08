@@ -45,7 +45,7 @@ const zvar = z => `var(--z-${z})`;
 const S = {
   habits: [], days: [], byDate: new Map(),
   from: monStart(TODAY), to: TODAY, preset: 'month', tab: 'dyn',
-  show: (() => { try { return localStorage.getItem('life-show') || 'both'; } catch { return 'both'; } })(),   // что рисовать на таймлайне
+  view: null,         // что и как рисовать на таймлайне — читается в boot()
   M: null,          // черновик отмечаемого дня
   edit: null        // черновик списка привычек
 };
@@ -71,7 +71,8 @@ async function boot() {
       Открой папку через локальный сервер: <code>python3 -m http.server</code></div></div>`;
     return;
   }
-  initTheme(); initDate(); initTabs();
+  S.view = loadView();
+  initTheme(); initDate(); initView(); initTabs();
   $('#updated').textContent = 'сегодня ' + long(TODAY);
   render();
   if (GH.token) reload();
@@ -192,17 +193,8 @@ function renderTimeline() {
 
   const box = $('#timeline'); box.innerHTML = '';
   const width = Math.max(280, box.clientWidth || 600);
-  const vis = SERIES.filter(s => S.show === 'both' || S.show === s.id);
-
-  // переключатель серий: одним кликом оставить только привычки или только задачи
-  const sw = el('div','quick tl__sw');
-  [['both','Обе'], ['hab','Привычки'], ['task','Задачи']].forEach(([id, name]) => {
-    const ser = SERIES.find(s => s.id === id);       // значок линии в кнопке вместо отдельной легенды
-    const b = el('button','quick__b' + (S.show === id ? ' is-on' : ''), (ser ? markerSvg(ser) : '') + name);
-    b.onclick = () => { S.show = id; try { localStorage.setItem('life-show', id); } catch {} renderTimeline(); };
-    sw.append(b);
-  });
-  box.append(sw);
+  const vis = SERIES.filter(s => S.view[s.id]);
+  if (!vis.length) { box.append(el('div','empty','Ничего не выбрано — отметь «Привычки» или «Задачи» в меню рядом с календарём')); return; }
 
   const ch = chart(rows, width, vis);
   box.append(ch.svg);
@@ -245,10 +237,16 @@ function chart(rows, W, series) {
   const x = i => L + (i + .5) * slot;
   const y = p => T + ih - p / 100 * ih;
 
-  // полосы зон и подписи порогов
-  ZONES.forEach(Z => svg.append(mk('rect', { x:L, width:iw, y:y(Z.hi), height:y(Z.lo) - y(Z.hi),
-    fill:zvar(Z.id), style:`fill-opacity:var(--band-${Z.id})` })));
-  [50, 75].forEach(v => svg.append(mk('line', { x1:L, x2:W - R, y1:y(v), y2:y(v), stroke:'var(--surface)', 'stroke-width':1.5 })));
+  // зоны: цветные полосы или, если выключены, пунктир на порогах 50% и 75%
+  if (S.view.zones) {
+    ZONES.forEach(Z => svg.append(mk('rect', { x:L, width:iw, y:y(Z.hi), height:y(Z.lo) - y(Z.hi),
+      fill:zvar(Z.id), style:`fill-opacity:var(--band-${Z.id})` })));
+    [50, 75].forEach(v => svg.append(mk('line', { x1:L, x2:W - R, y1:y(v), y2:y(v), stroke:'var(--surface)', 'stroke-width':1.5 })));
+  } else {
+    [50, 75].forEach(v => svg.append(mk('line', { x1:L, x2:W - R, y1:y(v), y2:y(v), stroke:'var(--ink-3)',
+      'stroke-width':1.2, 'stroke-dasharray':'5 5', opacity:.7 })));
+    svg.append(mk('line', { x1:L, x2:W - R, y1:y(0) + .5, y2:y(0) + .5, stroke:'var(--line)', 'stroke-width':1 }));
+  }
   [0, 25, 50, 75, 100].forEach(v => {
     const t = mk('text', { x:L - 8, y:y(v) + 4, 'text-anchor':'end', 'font-size':11, fill:'var(--ink-3)' });
     t.textContent = v + '%'; svg.append(t);
@@ -265,7 +263,7 @@ function chart(rows, W, series) {
 
   // линии рвутся только там, где дня нет в данных
   const rad = slot < 6 ? 2.6 : slot < 10 ? 3.4 : 4.8;
-  series.forEach(s => {
+  if (S.view.lines) series.forEach(s => {
     let seg = [];
     const flush = () => {
       if (seg.length > 1) svg.append(mk('polyline', { points:seg.join(' '), fill:'none', stroke:s.line,
@@ -439,6 +437,58 @@ function monthView(mStart, withPrev) {
   }
   wrap.append(nav, grid);
   return wrap;
+}
+
+/* ===================== вид графика ===================== */
+const VIEW_DEF = { hab:true, task:true, lines:true, zones:true };
+function loadView() {
+  try {
+    const v = JSON.parse(localStorage.getItem('life-view') || 'null');
+    if (v) return { ...VIEW_DEF, ...v };
+    const old = localStorage.getItem('life-show');          // прежний переключатель «Обе / Привычки / Задачи»
+    if (old && old !== 'both') return { ...VIEW_DEF, hab: old === 'hab', task: old === 'task' };
+  } catch {}
+  return { ...VIEW_DEF };
+}
+const VIEW_ITEMS = [
+  ['hab',   'Привычки'],
+  ['task',  'Задачи'],
+  null,
+  ['lines', 'Линии между точками'],
+  ['zones', 'Цветные зоны']
+];
+function initView() {
+  const ctrl = $('#viewCtrl'), btn = $('#viewBtn'), pop = $('#viewPop');
+  btn.onclick = e => {
+    e.stopPropagation();
+    const open = !pop.hidden;
+    closeAll();
+    if (!open) { pop.hidden = false; ctrl.classList.add('is-open'); drawView(); }
+  };
+  pop.onclick = e => e.stopPropagation();
+  viewLabel();
+}
+function viewLabel() {
+  const on = SERIES.filter(s => S.view[s.id]);
+  $('#viewLabel').textContent = on.length === 2 ? 'Привычки и задачи' : on.length ? on[0].title : 'Ничего не выбрано';
+}
+function drawView() {
+  const pop = $('#viewPop'); pop.innerHTML = '';
+  VIEW_ITEMS.forEach(it => {
+    if (!it) { pop.append(el('div','chan__sep')); return; }
+    const [k, name] = it;
+    const ser = SERIES.find(s => s.id === k);
+    const row = el('label','chan__row' + (S.view[k] ? ' on' : ''), `
+      <span class="chan__box"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M5 13l4 4L19 7"/></svg></span>
+      <span>${name}</span>${ser ? `<span class="chan__n">${markerSvg(ser)}</span>` : ''}`);
+    row.onclick = e => {
+      e.preventDefault();
+      S.view[k] = !S.view[k];
+      try { localStorage.setItem('life-view', JSON.stringify(S.view)); } catch {}
+      drawView(); viewLabel(); renderTimeline();
+    };
+    pop.append(row);
+  });
 }
 
 /* ===================== GitHub как хранилище ===================== */
