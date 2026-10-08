@@ -1,7 +1,7 @@
-@font-face{font-family:'Involve';src:url('fonts/Involve-Regular.ttf') format('truetype');font-weight:400;font-display:swap}
-@font-face{font-family:'Involve';src:url('fonts/Involve-Medium.ttf') format('truetype');font-weight:500;font-display:swap}
-@font-face{font-family:'Involve';src:url('fonts/Involve-SemiBold.ttf') format('truetype');font-weight:600;font-display:swap}
-@font-face{font-family:'Involve';src:url('fonts/Involve-Bold.ttf') format('truetype');font-weight:700;font-display:swap}
+@font-face{font-family:'Involve';src:url('fonts/Involve-Regular.woff2') format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:'Involve';src:url('fonts/Involve-Medium.woff2') format('woff2');font-weight:500;font-display:swap}
+@font-face{font-family:'Involve';src:url('fonts/Involve-SemiBold.woff2') format('woff2');font-weight:600;font-display:swap}
+@font-face{font-family:'Involve';src:url('fonts/Involve-Bold.woff2') format('woff2');font-weight:700;font-display:swap}
 
 :root{
   color-scheme:light;

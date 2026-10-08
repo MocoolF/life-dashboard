@@ -224,12 +224,6 @@ const SERIES = [
   { id:'hab',  title:'Привычки', line:'var(--l-hab)',  shape:'circle', p: r => r.habP },
   { id:'task', title:'Задачи',   line:'var(--l-task)', shape:'square', p: r => r.taskP }
 ];
-function markerSvg(s) {
-  return `<svg width="26" height="12" aria-hidden="true"><line x1="1" x2="25" y1="6" y2="6" stroke="${s.line}" stroke-width="2.5" stroke-linecap="round"/>
-    ${s.shape === 'circle' ? `<circle cx="13" cy="6" r="4.5" fill="${s.line}" stroke="var(--surface)" stroke-width="1.5"/>`
-      : `<rect x="8.5" y="1.5" width="9" height="9" rx="2" fill="${s.line}" stroke="var(--surface)" stroke-width="1.5"/>`}</svg>`;
-}
-
 function chart(rows, W, series) {
   const H = W < 520 ? 300 : 380, L = 38, R = 8, T = 10, B = 24;
   const iw = W - L - R, ih = H - T - B, n = rows.length, slot = iw / n;
@@ -459,10 +453,9 @@ function drawView() {
   VIEW_ITEMS.forEach(it => {
     if (!it) { box.append(el('span','vchk__sep')); return; }
     const [k, name] = it;
-    const ser = SERIES.find(s => s.id === k);
     const row = el('button','chan__row vchk__i' + (S.view[k] ? ' on' : ''), `
       <span class="chan__box"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M5 13l4 4L19 7"/></svg></span>
-      ${ser ? markerSvg(ser) : ''}<span>${name}</span>`);
+      <span>${name}</span>`);
     row.setAttribute('aria-pressed', S.view[k]);
     row.onclick = () => {
       S.view[k] = !S.view[k];
