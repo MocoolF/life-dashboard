@@ -72,11 +72,25 @@ async function boot() {
     return;
   }
   S.view = loadView();
+  renderMorning();
   initTheme(); initDate(); initView(); initTabs();
   $('#updated').textContent = 'сегодня ' + long(TODAY);
   render();
   if (GH.token) reload();
   let t; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => S.tab === 'dyn' && renderTimeline(), 120); });
+}
+
+/* ===================== утреннее напоминание ===================== */
+// просто текст для себя — правится здесь
+const MORNING = [
+  'Анализ привычек и задач',
+  'Напоминание о целях — год, месяц, неделя',
+  'Задачи на день + календарь'
+];
+function renderMorning() {
+  const html = `<div class="morning__t">Каждое утро</div>
+    <ol class="morning__l">${MORNING.map(t => `<li>${esc(t)}</li>`).join('')}</ol>`;
+  $$('.js-morning').forEach(n => n.innerHTML = html);
 }
 
 /* ===================== theme ===================== */
