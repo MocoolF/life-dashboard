@@ -102,5 +102,5 @@
  {"date":"2026-10-09","h":{"wake":false,"run":true,"math":false,"physics":false,"ritual":true,"calendar":false,"nosocial":false,"book":false,"video":false,"sleep":false},"done":3,"planned":5},
  {"date":"2026-10-10","h":{"wake":false,"run":true,"math":false,"physics":false,"ritual":true,"calendar":true,"nosocial":false,"book":false,"video":false,"sleep":true},"done":0,"planned":1},
  {"date":"2026-10-11","h":{"wake":false,"run":true,"math":true,"physics":false,"ritual":true,"calendar":true,"nosocial":true,"book":true,"video":true,"sleep":false},"done":3,"planned":3},
- {"date":"2026-10-12","h":{"wake":false,"run":true,"math":false,"physics":false,"ritual":false,"calendar":false,"nosocial":false,"book":false,"video":false,"sleep":false}}
+ {"date":"2026-10-12","h":{"wake":false,"run":true,"math":true,"physics":true,"ritual":false,"calendar":false,"nosocial":false,"book":false,"video":false,"sleep":false}}
 ]
