@@ -237,9 +237,6 @@ button.hcell{cursor:pointer}
 .chan__row.on .chan__box{background:var(--brand);border-color:var(--brand)}
 .chan__box svg{display:none;color:#fff}
 .chan__row.on .chan__box svg{display:block}
-.chan__key{width:7px;height:14px;border-radius:3px;display:block;flex:none}
-.chan__key.is-hab{background:var(--l-hab)}
-.chan__key.is-task{background:var(--l-task)}
 .vchk__sep{width:1px;height:18px;background:var(--line);margin:0 6px}
 @media (max-width:640px){ .vchk{margin-left:-9px;width:100%} .chan__row{padding:7px 8px;font-size:12.5px} .vchk__sep{margin:0 2px} }
 .tl__svg{width:100%;display:block;touch-action:pan-y;overflow:visible}
