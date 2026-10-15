@@ -429,8 +429,8 @@ function tipHtml(r, step, show = ['hab','task']) {
 /* ===================== date picker ===================== */
 const PRESETS = [
   ['today','Сегодня',           () => [TODAY, TODAY]],
-  ['week','Текущая неделя',    () => [mondayOf(TODAY), addD(mondayOf(TODAY), 6)]],   // вся неделя пн–вс, будущие дни пустые
-  ['month','Текущий месяц',    () => [monStart(TODAY), monEnd(TODAY)]],
+  ['week','Неделя',            () => [mondayOf(TODAY), addD(mondayOf(TODAY), 6)]],   // вся неделя пн–вс, будущие дни пустые
+  ['month','Месяц',            () => [monStart(TODAY), monEnd(TODAY)]],
   ['pmonth','Прошлый месяц',   () => { const p = addD(monStart(TODAY), -1); return [monStart(p), p]; }],
   ['q','Последние 90 дней',    () => [addD(TODAY, -89), TODAY]],
   ['all','Всё время',          () => [S.days[0]?.date || TODAY, TODAY]]
@@ -476,7 +476,7 @@ function initDate() {
   applyDateLabel();
 }
 
-const QUICK = [['week','Неделя'], ['month','Текущий месяц']];
+const QUICK = [['week','Неделя'], ['month','Месяц']];
 
 function renderQuick() {
   const box = $('#quick'); box.innerHTML = '';
