@@ -1,6 +1,6 @@
 {
-  "name": "Продуктивность — привычки и задачи",
-  "short_name": "Продуктивность",
+  "name": "bobrov.dashbord — привычки и задачи",
+  "short_name": "bobrov.dashbord",
   "start_url": "./#mark",
   "scope": ".",
   "display": "standalone",

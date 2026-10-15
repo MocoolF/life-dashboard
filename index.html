@@ -8,28 +8,28 @@
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/icon-180.png">
 <link rel="manifest" href="manifest.json">
-<meta name="apple-mobile-web-app-title" content="Продуктивность">
+<meta name="apple-mobile-web-app-title" content="bobrov.dashbord">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="robots" content="noindex, nofollow">
-<title>Продуктивность</title>
+<title>bobrov.dashbord</title>
 <link rel="preload" href="assets/fonts/Involve-Regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/Involve-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/style.css?v=59a891cd">
+<link rel="stylesheet" href="assets/style.css?v=2fca505c">
 </head>
 <body>
 
 <header class="topbar">
   <div class="topbar__in">
     <div class="brand">
-      <span class="brand__name">Продуктивность</span>
+      <span class="brand__name">bobrov.dashbord</span>
       <span class="brand__sub">привычки и задачи</span>
     </div>
     <nav class="tabs" id="tabs">
       <button class="tab is-active" data-tab="dyn">
         <svg class="tab__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M5 19V11M12 19V5M19 19v-8" stroke-linecap="round"/></svg>
-        <span class="tab__label">Динамика</span>
+        <span class="tab__label">Статистика</span>
       </button>
       <button class="tab" data-tab="hab">
         <svg class="tab__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></svg>
@@ -37,7 +37,7 @@
       </button>
       <button class="tab" data-tab="mark">
         <svg class="tab__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span class="tab__label">Отметить</span>
+        <span class="tab__label">Трекер</span>
       </button>
     </nav>
     <button class="icon-btn" id="themeBtn" title="Тема" aria-label="Переключить тему">
@@ -69,6 +69,11 @@
 <main class="wrap" id="view-dyn">
   <section class="morning js-morning"></section>
 
+  <section class="goal" aria-label="Цель">
+    <div class="goal__title">Цель</div>
+    <div class="goal__text">Закрывать привычки и задачи на зелёное</div>
+  </section>
+
   <section class="top" id="top"></section>
 
   <section class="card">
@@ -84,7 +89,7 @@
 
   <footer class="foot">
     Зоны: красная — меньше 50%, голубая — 50–75%, зелёная — 75% и выше
-    · <span id="build">сборка 15.10 09:00 · 59a891cd</span>
+    · <span id="build">сборка 15.10 09:05 · 2fca505c</span>
   </footer>
 </main>
 
@@ -140,6 +145,6 @@
 
 <div class="tip" id="tip" hidden></div>
 
-<script src="assets/app.js?v=59a891cd"></script>
+<script src="assets/app.js?v=2fca505c"></script>
 </body>
 </html>
