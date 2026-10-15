@@ -46,7 +46,7 @@ const S = {
   habits: [], days: [], byDate: new Map(),
   from: monStart(TODAY), to: TODAY, preset: 'month', tab: 'dyn',
   view: null,         // что и как рисовать на таймлайне — читается в boot()
-  habitRange: 'days90', // период на отдельном листе привычек
+  habitRange: 'half', // период на отдельном листе привычек
   H: null,            // черновик привычек за сегодня
   M: null,          // черновик отмечаемого дня
   edit: null        // черновик списка привычек
@@ -491,7 +491,7 @@ function drawView() {
 /* ===================== лист «Привычки» ===================== */
 const HABIT_PERIODS = [
   ['week', 'Неделя'],
-  ['days90', '90 дней']
+  ['half', 'Полгода']
 ];
 const HABIT_COLORS = ['var(--s1)','var(--s3)','var(--s6)','var(--s4)','var(--s5)','var(--s2)'];
 const hasOwn = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
@@ -501,7 +501,7 @@ function loadHabitRange() {
     const v = localStorage.getItem('life-habit-range');
     if (HABIT_PERIODS.some(([id]) => id === v)) return v;
   } catch {}
-  return 'days90';
+  return 'half';
 }
 
 function loadHabitToday() {
@@ -523,7 +523,7 @@ function habitPeriod() {
     const gridFrom = mondayOf(TODAY);
     return { from:gridFrom, to:TODAY, gridFrom, gridTo:addD(gridFrom, 6) };
   }
-  const count = 90;
+  const count = 183;
   const from = addD(TODAY, 1 - count);
   return { from, to:TODAY, gridFrom:mondayOf(from), gridTo:addD(mondayOf(TODAY), 6) };
 }
@@ -643,8 +643,9 @@ function renderHabits() {
     const head = el('div','hcard__head');
     const identity = el('div','hcard__identity', `<i class="hcard__dot"></i><h2 class="hcard__name">${esc(habit.name)}</h2>`);
     const meta = el('div','hcard__meta');
-    const streakNode = el('span','hcard__streak', `<span class="hcard__flame" aria-hidden="true">🔥</span><b>${streak}</b>`);
-    streakNode.setAttribute('aria-label', `Серия: ${streak} ${plural(streak,['день','дня','дней'])}`);
+    const streakText = `${streak} ${plural(streak,['день','дня','дней'])}`;
+    const streakNode = el('span','hcard__streak', `<span class="hcard__flame" aria-hidden="true">🔥</span><span>Серия <b>${streak}</b> ${plural(streak,['день','дня','дней'])}</span>`);
+    streakNode.setAttribute('aria-label', `Серия: ${streakText}`);
     streakNode.title = streakNode.getAttribute('aria-label');
     meta.append(streakNode);
     const todayOn = !!S.H.h[habit.id];
