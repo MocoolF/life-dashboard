@@ -46,6 +46,8 @@ const S = {
   habits: [], days: [], byDate: new Map(),
   from: monStart(TODAY), to: TODAY, preset: 'month', tab: 'dyn',
   view: null,         // что и как рисовать на таймлайне — читается в boot()
+  habitRange: 'half', // период на отдельном листе привычек
+  H: null,            // черновик привычек за сегодня
   M: null,          // черновик отмечаемого дня
   edit: null        // черновик списка привычек
 };
@@ -72,6 +74,7 @@ async function boot() {
     return;
   }
   S.view = loadView();
+  S.habitRange = loadHabitRange();
   renderMorning();
   initTheme(); initDate(); initView(); initTabs();
   $('#updated').textContent = 'сегодня ' + long(TODAY);
@@ -108,25 +111,30 @@ function initTheme() {
 
 /* ===================== tabs ===================== */
 function initTabs() {
+  const tabFromHash = () => location.hash === '#mark' ? 'mark' : location.hash === '#habits' ? 'hab' : 'dyn';
+  const hashForTab = tab => tab === 'mark' ? '#mark' : tab === 'hab' ? '#habits' : '#';
   const go = tab => {
     if (S.tab === 'mark' && tab !== 'mark' && isDirty() && !confirm('Отметки за день не сохранены. Уйти без сохранения?')) {
-      history.replaceState(null, '', '#mark'); return;
+      history.replaceState(null, '', hashForTab(S.tab)); return;
     }
     S.tab = tab;
     $$('#tabs .tab').forEach(x => x.classList.toggle('is-active', x.dataset.tab === tab));
     $('#view-dyn').hidden  = tab !== 'dyn';
+    $('#view-hab').hidden  = tab !== 'hab';
     $('#view-mark').hidden = tab !== 'mark';
     $('.filters').hidden   = tab !== 'dyn';
+    if (tab === 'hab' && !S.H) loadHabitToday();
     if (tab === 'mark' && !S.M) loadMark(TODAY);
     render();
   };
-  $$('#tabs .tab').forEach(b => b.onclick = () => { history.replaceState(null, '', b.dataset.tab === 'mark' ? '#mark' : '#'); go(b.dataset.tab); });
-  go(location.hash === '#mark' ? 'mark' : 'dyn');
-  addEventListener('hashchange', () => go(location.hash === '#mark' ? 'mark' : 'dyn'));
+  $$('#tabs .tab').forEach(b => b.onclick = () => { history.replaceState(null, '', hashForTab(b.dataset.tab)); go(b.dataset.tab); });
+  go(tabFromHash());
+  addEventListener('hashchange', () => go(tabFromHash()));
 }
 
 function render() {
   if (S.tab === 'mark') return renderMark();
+  if (S.tab === 'hab') return renderHabits();
   renderTop();
   renderTimeline();
 }
@@ -480,6 +488,211 @@ function drawView() {
   });
 }
 
+/* ===================== лист «Привычки» ===================== */
+const HABIT_PERIODS = [
+  ['week', 'Неделя'],
+  ['half', 'Полгода'],
+  ['year', 'Год']
+];
+const HABIT_COLORS = ['var(--s1)','var(--s3)','var(--s6)','var(--s4)','var(--s5)','var(--s2)'];
+const hasOwn = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
+
+function loadHabitRange() {
+  try {
+    const v = localStorage.getItem('life-habit-range');
+    if (HABIT_PERIODS.some(([id]) => id === v)) return v;
+  } catch {}
+  return 'half';
+}
+
+function loadHabitToday() {
+  const rec = S.byDate.get(TODAY) || null;
+  const ids = S.habits.filter(h => h.active).map(h => h.id);
+  if (rec?.h) Object.keys(rec.h).forEach(id => { if (!ids.includes(id)) ids.push(id); });
+  const initial = Object.fromEntries(ids.map(id => [id, !!rec?.h?.[id]]));
+  S.H = {
+    date: TODAY, rec, ids,
+    h: { ...initial }, initial,
+    initialKnown: Object.fromEntries(ids.map(id => [id, hasOwn(rec?.h, id)]))
+  };
+}
+
+const isHabitDirty = () => !!S.H && S.H.ids.some(id => S.H.h[id] !== S.H.initial[id]);
+
+function habitPeriod() {
+  if (S.habitRange === 'week') {
+    const gridFrom = mondayOf(TODAY);
+    return { from:gridFrom, to:TODAY, gridFrom, gridTo:addD(gridFrom, 6) };
+  }
+  const count = S.habitRange === 'year' ? 365 : 183;
+  const from = addD(TODAY, 1 - count);
+  return { from, to:TODAY, gridFrom:mondayOf(from), gridTo:addD(mondayOf(TODAY), 6) };
+}
+
+function habitValue(id, date) {
+  if (date > TODAY) return 'future';
+  if (date === TODAY && S.H) {
+    if (S.H.initialKnown[id] || S.H.h[id] !== S.H.initial[id]) return S.H.h[id];
+    return null;
+  }
+  const rec = S.byDate.get(date);
+  return hasOwn(rec?.h, id) ? !!rec.h[id] : null;
+}
+
+function habitStreak(id) {
+  const today = habitValue(id, TODAY);
+  if (today === false) return 0;
+  let date = today === true ? TODAY : addD(TODAY, -1);
+  let n = 0;
+  while (n < 5000 && habitValue(id, date) === true) { n++; date = addD(date, -1); }
+  return n;
+}
+
+function renderHabitPeriods() {
+  const box = $('#habitPeriods'); box.innerHTML = '';
+  HABIT_PERIODS.forEach(([id, name]) => {
+    const b = el('button','quick__b' + (S.habitRange === id ? ' is-on' : ''), name);
+    b.setAttribute('aria-pressed', S.habitRange === id);
+    b.onclick = () => {
+      S.habitRange = id;
+      try { localStorage.setItem('life-habit-range', id); } catch {}
+      renderHabits();
+    };
+    box.append(b);
+  });
+}
+
+function habitCell(id, date) {
+  const value = habitValue(id, date);
+  const state = value === true ? 'done' : value === false ? 'missed' : value === 'future' ? 'future' : 'unknown';
+  const c = el('span', `hcell is-${state}` + (date === TODAY ? ' is-today' : ''));
+  const note = state === 'done' ? 'сделано' : state === 'missed' ? 'не сделано' : state === 'future' ? 'будущий день' : 'нет отметки';
+  c.title = `${long(date)} — ${note}`;
+  c.setAttribute('role', 'img');
+  c.setAttribute('aria-label', c.title);
+  return c;
+}
+
+function habitHeatmap(id, period) {
+  const wrap = el('div','hscroll');
+  const dates = datesOf(period.gridFrom, period.gridTo);
+  if (S.habitRange === 'week') {
+    const weekdays = el('div','hweekdays');
+    dates.forEach(date => {
+      const d = parse(date), day = DOW[(d.getDay() + 6) % 7];
+      weekdays.append(el('span','hweekday', `${day}<b>${d.getDate()}</b>`));
+    });
+    const map = el('div','hmap hmap--week');
+    dates.forEach(date => map.append(habitCell(id, date)));
+    wrap.append(weekdays, map);
+    return wrap;
+  }
+
+  const weeks = Math.ceil(dates.length / 7);
+  const markers = [];
+  for (let w = 0; w < weeks; w++) {
+    const date = addD(period.gridFrom, w * 7), d = parse(date);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    if (!markers.length || markers[markers.length - 1].key !== key) markers.push({ col:w, key, label:MON[d.getMonth()].slice(0,3) });
+  }
+  const months = el('div','hmonths');
+  months.style.gridTemplateColumns = `repeat(${weeks}, var(--hcell-size))`;
+  markers.forEach((m, i) => {
+    const n = el('span','hmonth', m.label);
+    n.style.gridColumn = `${m.col + 1} / span ${Math.max(1, (markers[i + 1]?.col ?? weeks) - m.col)}`;
+    months.append(n);
+  });
+  const map = el('div','hmap hmap--long');
+  map.style.gridTemplateColumns = `repeat(${weeks}, var(--hcell-size))`;
+  dates.forEach(date => {
+    const c = habitCell(id, date);
+    if (date < period.from) c.className = 'hcell is-pad';
+    map.append(c);
+  });
+  wrap.append(months, map);
+  return wrap;
+}
+
+function renderHabitSaveBar() {
+  const H = S.H, bar = $('#habitSaveBar'); bar.innerHTML = '';
+  const dirty = isHabitDirty();
+  bar.hidden = !dirty;
+  if (!dirty) return;
+  const status = '<b>Есть несохранённая отметка за сегодня</b>';
+  bar.append(el('span','savebar__t', status));
+  const save = el('button','btn btn--primary', GH.token ? 'Сохранить' : 'Нужен ключ');
+  save.onclick = () => saveHabitToday(save);
+  bar.append(save);
+}
+
+function habitRangeLabel(from, to) {
+  if (from.slice(0,4) === to.slice(0,4)) return span(from, to);
+  return `${short(from)} ${from.slice(0,4)} – ${short(to)} ${to.slice(0,4)}`;
+}
+
+function renderHabits() {
+  if (!S.H || S.H.date !== TODAY) loadHabitToday();
+  renderHabitPeriods();
+  const box = $('#habitCards'); box.innerHTML = '';
+  const habits = S.habits.filter(h => h.active);
+  if (!habits.length) box.append(el('div','card habit-empty','Нет активных привычек. Добавь их на листе «Отметить».'));
+  const period = habitPeriod();
+  const rangeDates = datesOf(period.from, period.to);
+  habits.forEach((habit, index) => {
+    const values = rangeDates.map(date => habitValue(habit.id, date)).filter(v => typeof v === 'boolean');
+    const done = values.filter(Boolean).length, known = values.length, streak = habitStreak(habit.id);
+    const card = el('article','hcard');
+    card.style.setProperty('--habit-accent', HABIT_COLORS[index % HABIT_COLORS.length]);
+    const head = el('div','hcard__head');
+    const identity = el('div','hcard__identity', `<i class="hcard__dot"></i><h2 class="hcard__name">${esc(habit.name)}</h2>`);
+    const meta = el('div','hcard__meta');
+    meta.append(
+      el('span','hcard__streak', `🔥 <b>${streak}</b> ${plural(streak,['день','дня','дней'])}`),
+      el('span','hcard__score', known ? `${done} из ${known}` : 'нет данных')
+    );
+    const todayOn = !!S.H.h[habit.id];
+    const today = el('button','hcard__today' + (todayOn ? ' on' : ''), `<span>Сегодня</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><path d="M5 13l4 4L19 7"/></svg>`);
+    today.setAttribute('aria-pressed', todayOn);
+    today.setAttribute('aria-label', `${habit.name}: ${todayOn ? 'сделано сегодня' : 'отметить сделанной сегодня'}`);
+    today.onclick = () => { S.H.h[habit.id] = !S.H.h[habit.id]; renderHabits(); };
+    head.append(identity, meta, today);
+    card.append(head, el('div','hcard__range', `${habitRangeLabel(period.from, period.to)} · одна клетка — один день`), habitHeatmap(habit.id, period));
+    box.append(card);
+  });
+  renderHabitSaveBar();
+  if (S.habitRange !== 'week') requestAnimationFrame(() => {
+    $$('#habitCards .hscroll').forEach(n => { n.scrollLeft = n.scrollWidth; });
+  });
+}
+
+async function saveHabitToday(btn) {
+  if (iso(new Date()) !== TODAY) { toast('Наступил новый день — обнови страницу перед сохранением'); return; }
+  if (!GH.token) { toast('Подключи ключ доступа на листе «Отметить», затем вернись сюда'); return; }
+  const H = S.H;
+  const active = S.habits.filter(h => h.active).map(h => h.id);
+  const changed = new Set(H.ids.filter(id => H.h[id] !== H.initial[id]));
+  const done = active.filter(id => H.h[id]).length;
+  const msg = `${short(TODAY)} · привычки ${done}/${active.length}`;
+  try {
+    busy(btn, true);
+    $$('#habitCards .hcard__today').forEach(b => b.disabled = true);
+    const next = await ghSave(FILES.days, days => {
+      const old = days.find(d => d.date === TODAY) || {};
+      const h = { ...(old.h || {}) };
+      changed.forEach(id => { h[id] = !!H.h[id]; });
+      const rec = { date:TODAY, ...old, h };
+      return [...days.filter(d => d.date !== TODAY), rec].sort((a,b) => a.date.localeCompare(b.date));
+    }, msg);
+    setData(S.habits, next);
+    if (S.M?.date === TODAY && !isDirty()) loadMark(TODAY);
+    loadHabitToday(); renderHabits();
+    toast('Сохранено: ' + msg);
+  } catch (e) {
+    toast('Не сохранилось: ' + e.message);
+    $$('#habitCards .hcard__today').forEach(b => b.disabled = false);
+  } finally { busy(btn, false); }
+}
+
 /* ===================== GitHub как хранилище ===================== */
 const GH = {
   get token() { try { return localStorage.getItem('life-gh-token') || ''; } catch { return ''; } },
@@ -529,6 +742,7 @@ async function reload() {
       : fetch(f + '?_=' + Date.now(), {cache:'no-store'}).then(r => r.json())));
     setData(h, d);
     if (S.M && !isDirty()) loadMark(S.M.date);
+    if (S.H && !isHabitDirty()) loadHabitToday();
     render();
   } catch (e) { toast('Не удалось обновить данные: ' + e.message); }
 }
@@ -639,6 +853,7 @@ async function saveDay(btn) {
       return [...days.filter(d => d.date !== M.date), rec].sort((a,b) => a.date.localeCompare(b.date));
     }, msg);
     setData(S.habits, next);
+    if (S.H && !isHabitDirty()) loadHabitToday();
     loadMark(M.date); renderMark();
     toast('Сохранено: ' + msg);
   } catch (e) { toast('Не сохранилось: ' + e.message); }
@@ -709,6 +924,7 @@ async function saveHabits(btn) {
     busy(btn, true);
     const next = await ghSave(FILES.habits, () => list, msg);
     setData(next, S.days);
+    if (S.H && !isHabitDirty()) loadHabitToday();
     S.edit = null; loadMark(S.M.date); renderMark();
     toast('Сохранено: ' + msg);
   } catch (e) { toast('Не сохранилось: ' + e.message); }
@@ -770,6 +986,6 @@ function closeAll() {
 document.addEventListener('click', closeAll);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAll(); });
 document.addEventListener('touchstart', e => { if (!e.target.closest('.tl__svg')) S.tipOut?.(); }, {passive:true});
-addEventListener('beforeunload', e => { if (isDirty()) e.preventDefault(); });
+addEventListener('beforeunload', e => { if (isDirty() || isHabitDirty()) e.preventDefault(); });
 
 boot();

@@ -16,7 +16,7 @@
 <title>Продуктивность</title>
 <link rel="preload" href="assets/fonts/Involve-Regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/Involve-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/style.css?v=46b2b787">
+<link rel="stylesheet" href="assets/style.css?v=aa987494">
 </head>
 <body>
 
@@ -28,6 +28,7 @@
     </div>
     <nav class="tabs" id="tabs">
       <button class="tab is-active" data-tab="dyn">Динамика</button>
+      <button class="tab" data-tab="hab">Привычки</button>
       <button class="tab" data-tab="mark">Отметить</button>
     </nav>
     <button class="icon-btn" id="themeBtn" title="Тема" aria-label="Переключить тему">
@@ -74,8 +75,22 @@
 
   <footer class="foot">
     Зоны: красная — меньше 50%, голубая — 50–75%, зелёная — 75% и выше
-    · <span id="build">сборка 09.10 14:09 · 46b2b787</span>
+    · <span id="build">сборка 15.10 08:10 · aa987494</span>
   </footer>
+</main>
+
+<main class="wrap wrap--narrow" id="view-hab" hidden>
+  <section class="habit-head">
+    <div>
+      <h1 class="habit-head__title">Привычки</h1>
+      <p class="card__hint">Отмечай сегодняшний день и следи за сериями без перерывов</p>
+    </div>
+    <div class="habit-periods" id="habitPeriods" aria-label="Период привычек"></div>
+  </section>
+
+  <section class="habit-list" id="habitCards" aria-live="polite"></section>
+
+  <div class="savebar" id="habitSaveBar" aria-live="polite"></div>
 </main>
 
 <main class="wrap wrap--narrow" id="view-mark" hidden>
@@ -116,6 +131,6 @@
 
 <div class="tip" id="tip" hidden></div>
 
-<script src="assets/app.js?v=46b2b787"></script>
+<script src="assets/app.js?v=aa987494"></script>
 </body>
 </html>
