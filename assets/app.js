@@ -209,6 +209,21 @@ function zoneDayCounts(dates, key) {
   return counts;
 }
 
+function greenStreak(key) {
+  const todayFacts = dayFacts(S.byDate.get(TODAY));
+  const todayValue = key === 'hab' ? todayFacts.hab : todayFacts.task;
+  let date = todayValue ? TODAY : addD(TODAY, -1);
+  let streak = 0;
+  while (true) {
+    const facts = dayFacts(S.byDate.get(date));
+    const value = key === 'hab' ? facts.hab : facts.task;
+    if (!value || zone(pct(value.d, value.t)) !== 'green') break;
+    streak++;
+    date = addD(date, -1);
+  }
+  return streak;
+}
+
 function buildRows(from, to) {
   // таймлайн всегда по дням, при любом периоде
   const rows = datesOf(from, to).map(d => {
@@ -230,10 +245,10 @@ function renderTop() {
   box.append(
     bigCard('Привычки', f.habP, before.habP,
       f.hab ? `${f.hab.d} из ${f.hab.t} ${plural(f.hab.t,['отметки','отметок','отметок'])}` : 'нет отметок',
-      zoneDayCounts(currentDates, 'hab'), previousLabel),
+      zoneDayCounts(currentDates, 'hab'), previousLabel, greenStreak('hab')),
     bigCard('Задачи', f.taskP, before.taskP,
       f.task ? `${f.task.d} из ${f.task.t} ${plural(f.task.t,['задачи','задач','задач'])}` : 'нет данных',
-      zoneDayCounts(currentDates, 'task'), previousLabel)
+      zoneDayCounts(currentDates, 'task'), previousLabel, greenStreak('task'))
   );
 }
 
@@ -258,8 +273,9 @@ function zoneCountsMarkup(counts) {
   return `<div class="big__zones" title="${note}"><div class="big__zones-title">Дни по зонам</div><div class="big__zones-list">${items}</div></div>`;
 }
 
-function bigCard(name, p, previousP, of, counts, previousLabel) {
+function bigCard(name, p, previousP, of, counts, previousLabel, streak) {
   const z = zone(p);
+  const streakText = `${streak} ${plural(streak,['день','дня','дней'])}`;
   return el('div','big', `
     <div class="big__main">
       <div class="big__name">${name}</div>
@@ -268,6 +284,7 @@ function bigCard(name, p, previousP, of, counts, previousLabel) {
         ${trendMarkup(p, previousP, previousLabel)}
         <span class="big__of">${of}</span>
       </div>
+      <div class="big__streak" aria-label="Текущая зелёная серия: ${streakText}">🔥 Зелёная серия <b>${streakText}</b></div>
     </div>
     ${zoneCountsMarkup(counts)}`);
 }
