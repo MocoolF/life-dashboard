@@ -176,6 +176,38 @@ function fold(dates) {
 
 function datesOf(a, b) { const out = []; for (let d = a; d <= b; d = addD(d, 1)) out.push(d); return out; }
 
+function elapsedRange() {
+  let to = S.to < TODAY ? S.to : TODAY;
+  if (to === TODAY && !S.byDate.has(TODAY)) to = addD(to, -1);
+  return to < S.from ? null : { from:S.from, to };
+}
+
+function previousRange(current) {
+  if (!current) return null;
+  if (S.preset === 'week') return { from:addD(current.from, -7), to:addD(current.to, -7) };
+  if (S.preset === 'month') {
+    const previousMonth = addD(monStart(current.from), -1);
+    const from = monStart(previousMonth);
+    const day = Math.min(parse(current.to).getDate(), parse(monEnd(from)).getDate());
+    const base = parse(from);
+    return { from, to:iso(new Date(base.getFullYear(), base.getMonth(), day)) };
+  }
+  const length = daysIn(current.from, current.to);
+  const to = addD(current.from, -1);
+  return { from:addD(to, 1 - length), to };
+}
+
+function zoneDayCounts(dates, key) {
+  const counts = { red:0, blue:0, green:0, total:0 };
+  dates.forEach(date => {
+    const facts = dayFacts(S.byDate.get(date));
+    const value = key === 'hab' ? facts.hab : facts.task;
+    const z = zone(value ? pct(value.d, value.t) : null);
+    if (z) { counts[z]++; counts.total++; }
+  });
+  return counts;
+}
+
 function buildRows(from, to) {
   // таймлайн всегда по дням, при любом периоде
   const rows = datesOf(from, to).map(d => {
@@ -187,22 +219,56 @@ function buildRows(from, to) {
 
 /* ===================== верхние карточки ===================== */
 function renderTop() {
-  const f = fold(datesOf(S.from, S.to));
+  const currentRange = elapsedRange();
+  const previous = previousRange(currentRange);
+  const currentDates = currentRange ? datesOf(currentRange.from, currentRange.to) : [];
+  const f = fold(currentDates);
+  const before = previous ? fold(datesOf(previous.from, previous.to)) : { habP:null, taskP:null };
+  const previousLabel = previous ? span(previous.from, previous.to) : '';
   const box = $('#top'); box.innerHTML = '';
   box.append(
-    bigCard('Привычки', f.habP, f.hab ? `${f.hab.d} из ${f.hab.t} ${plural(f.hab.t,['отметки','отметок','отметок'])}` : 'нет отметок'),
-    bigCard('Задачи', f.taskP, f.task ? `${f.task.d} из ${f.task.t} ${plural(f.task.t,['задачи','задач','задач'])}` : 'нет данных')
+    bigCard('Привычки', f.habP, before.habP,
+      f.hab ? `${f.hab.d} из ${f.hab.t} ${plural(f.hab.t,['отметки','отметок','отметок'])}` : 'нет отметок',
+      zoneDayCounts(currentDates, 'hab'), previousLabel),
+    bigCard('Задачи', f.taskP, before.taskP,
+      f.task ? `${f.task.d} из ${f.task.t} ${plural(f.task.t,['задачи','задач','задач'])}` : 'нет данных',
+      zoneDayCounts(currentDates, 'task'), previousLabel)
   );
 }
 
-function bigCard(name, p, of) {
+function trendMarkup(current, previous, previousLabel) {
+  if (current == null || previous == null) return '<span class="big__trend is-none">нет сравнения</span>';
+  const diff = Math.round(current - previous);
+  const cls = diff > 0 ? 'is-up' : diff < 0 ? 'is-down' : 'is-flat';
+  const icon = diff > 0 ? '▲' : diff < 0 ? '▼' : '—';
+  const title = `Прошлый аналогичный период (${previousLabel}): ${pctS(previous)}. Разница в процентных пунктах.`;
+  return `<span class="big__trend ${cls}" title="${esc(title)}" aria-label="${esc(title)}">${icon} ${Math.abs(diff)} п.п.</span>`;
+}
+
+function zoneCountsMarkup(counts) {
+  const items = [
+    ['red','Красных'], ['blue','Голубых'], ['green','Зелёных']
+  ].map(([id, label]) => {
+    const n = counts[id];
+    const aria = `${label} дней: ${n}`;
+    return `<span class="big__zone" aria-label="${aria}"><i class="big__zone-dot is-${id}"></i><b>${n}</b><small>${label}</small></span>`;
+  }).join('');
+  const note = counts.total ? `${counts.total} ${plural(counts.total,['день','дня','дней'])} с данными` : 'нет дней с данными';
+  return `<div class="big__zones" title="${note}"><div class="big__zones-title">Дни по зонам</div><div class="big__zones-list">${items}</div></div>`;
+}
+
+function bigCard(name, p, previousP, of, counts, previousLabel) {
   const z = zone(p);
   return el('div','big', `
-    <div class="big__name">${name}</div>
-    <div class="big__row">
-      <span class="big__val ${z ? 'z-' + z : 'is-none'}">${pctS(p)}</span>
-      <span class="big__of">${of}</span>
-    </div>`);
+    <div class="big__main">
+      <div class="big__name">${name}</div>
+      <div class="big__row">
+        <span class="big__val ${z ? 'z-' + z : 'is-none'}">${pctS(p)}</span>
+        ${trendMarkup(p, previousP, previousLabel)}
+        <span class="big__of">${of}</span>
+      </div>
+    </div>
+    ${zoneCountsMarkup(counts)}`);
 }
 
 /* ===================== таймлайн ===================== */
