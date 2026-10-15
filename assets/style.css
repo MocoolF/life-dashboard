@@ -190,7 +190,6 @@ button.hcell{cursor:pointer}
 .hcell.is-unknown{background:transparent;border-color:var(--line);border-style:dashed;color:var(--ink-3)}
 .hcell.is-future{background:var(--surface-2);border-color:var(--line-2);color:var(--ink-3);opacity:.55}
 .hcell.is-pad{visibility:hidden;pointer-events:none}
-.hcell.is-today{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--habit-accent);z-index:1}
 .hweekdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-bottom:5px}
 .hweekday{display:flex;flex-direction:column;align-items:center;text-align:center;color:var(--ink-3);font-size:10px;line-height:16px;text-transform:uppercase;font-weight:500}
 .hweekday b{display:block;color:var(--ink-2);font-size:11.5px;font-weight:600}
@@ -368,7 +367,6 @@ html[data-theme="dark"] .toast{background:#0d1216;border:1px solid var(--line)}
   .hmap--week .hcell{min-height:30px;border-radius:7px}
   .hmonths,.hmap--long{--hcell-size:9px;gap:3px}
   .hmap--long .hcell{border-radius:3px}
-  .hmap--long .hcell.is-today{box-shadow:0 0 0 1px var(--surface),0 0 0 2px var(--habit-accent)}
   .savebar{bottom:calc(76px + env(safe-area-inset-bottom))}
   .toast{bottom:calc(78px + env(safe-area-inset-bottom))}
 }
