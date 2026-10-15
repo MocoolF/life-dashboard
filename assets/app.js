@@ -46,7 +46,7 @@ const S = {
   habits: [], days: [], byDate: new Map(),
   from: monStart(TODAY), to: TODAY, preset: 'month', tab: 'dyn',
   view: null,         // что и как рисовать на таймлайне — читается в boot()
-  habitRange: 'half', // период на отдельном листе привычек
+  habitRange: 'days90', // период на отдельном листе привычек
   H: null,            // черновик привычек за сегодня
   M: null,          // черновик отмечаемого дня
   edit: null        // черновик списка привычек
@@ -491,8 +491,7 @@ function drawView() {
 /* ===================== лист «Привычки» ===================== */
 const HABIT_PERIODS = [
   ['week', 'Неделя'],
-  ['half', 'Полгода'],
-  ['year', 'Год']
+  ['days90', '90 дней']
 ];
 const HABIT_COLORS = ['var(--s1)','var(--s3)','var(--s6)','var(--s4)','var(--s5)','var(--s2)'];
 const hasOwn = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
@@ -502,7 +501,7 @@ function loadHabitRange() {
     const v = localStorage.getItem('life-habit-range');
     if (HABIT_PERIODS.some(([id]) => id === v)) return v;
   } catch {}
-  return 'half';
+  return 'days90';
 }
 
 function loadHabitToday() {
@@ -524,7 +523,7 @@ function habitPeriod() {
     const gridFrom = mondayOf(TODAY);
     return { from:gridFrom, to:TODAY, gridFrom, gridTo:addD(gridFrom, 6) };
   }
-  const count = S.habitRange === 'year' ? 365 : 183;
+  const count = 90;
   const from = addD(TODAY, 1 - count);
   return { from, to:TODAY, gridFrom:mondayOf(from), gridTo:addD(mondayOf(TODAY), 6) };
 }
@@ -637,23 +636,22 @@ function renderHabits() {
   const habits = S.habits.filter(h => h.active);
   if (!habits.length) box.append(el('div','card habit-empty','Нет активных привычек. Добавь их на листе «Отметить».'));
   const period = habitPeriod();
-  const rangeDates = datesOf(period.from, period.to);
   habits.forEach((habit, index) => {
-    const values = rangeDates.map(date => habitValue(habit.id, date)).filter(v => typeof v === 'boolean');
-    const done = values.filter(Boolean).length, known = values.length, streak = habitStreak(habit.id);
+    const streak = habitStreak(habit.id);
     const card = el('article','hcard');
     card.style.setProperty('--habit-accent', HABIT_COLORS[index % HABIT_COLORS.length]);
     const head = el('div','hcard__head');
     const identity = el('div','hcard__identity', `<i class="hcard__dot"></i><h2 class="hcard__name">${esc(habit.name)}</h2>`);
     const meta = el('div','hcard__meta');
-    meta.append(
-      el('span','hcard__streak', `🔥 <b>${streak}</b> ${plural(streak,['день','дня','дней'])}`),
-      el('span','hcard__score', known ? `${done} из ${known}` : 'нет данных')
-    );
+    const streakNode = el('span','hcard__streak', `<span class="hcard__flame" aria-hidden="true">🔥</span><b>${streak}</b>`);
+    streakNode.setAttribute('aria-label', `Серия: ${streak} ${plural(streak,['день','дня','дней'])}`);
+    streakNode.title = streakNode.getAttribute('aria-label');
+    meta.append(streakNode);
     const todayOn = !!S.H.h[habit.id];
-    const today = el('button','hcard__today' + (todayOn ? ' on' : ''), `<span>Сегодня</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><path d="M5 13l4 4L19 7"/></svg>`);
+    const today = el('button','hcard__today' + (todayOn ? ' on' : ''), `<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>`);
     today.setAttribute('aria-pressed', todayOn);
     today.setAttribute('aria-label', `${habit.name}: ${todayOn ? 'сделано сегодня' : 'отметить сделанной сегодня'}`);
+    today.title = todayOn ? 'Сделано сегодня' : 'Отметить сегодня';
     today.onclick = () => { S.H.h[habit.id] = !S.H.h[habit.id]; renderHabits(); };
     head.append(identity, meta, today);
     card.append(head, el('div','hcard__range', `${habitRangeLabel(period.from, period.to)} · одна клетка — один день`), habitHeatmap(habit.id, period));
