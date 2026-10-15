@@ -73,6 +73,7 @@ async function boot() {
       Открой папку через локальный сервер: <code>python3 -m http.server</code></div></div>`;
     return;
   }
+  loadDateRange();
   S.view = loadView();
   S.habitRange = loadHabitRange();
   renderMorning();
@@ -436,6 +437,32 @@ const PRESETS = [
 ];
 
 let dpFrom = null, dpTo = null, dpLeft = null;
+const DATE_RANGE_KEY = 'life-date-range';
+
+function validStoredDate(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value || '') && iso(parse(value)) === value;
+}
+
+function loadDateRange() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DATE_RANGE_KEY) || 'null');
+    if (!saved) return;
+    const preset = PRESETS.find(p => p[0] === saved.preset);
+    if (preset) {
+      [S.from, S.to] = preset[2]();
+      S.preset = saved.preset;
+    } else if (saved.preset === 'custom' && validStoredDate(saved.from) && validStoredDate(saved.to)
+      && saved.from <= saved.to && saved.to <= TODAY) {
+      S.from = saved.from;
+      S.to = saved.to;
+      S.preset = 'custom';
+    }
+  } catch {}
+}
+
+function saveDateRange() {
+  try { localStorage.setItem(DATE_RANGE_KEY, JSON.stringify({ from:S.from, to:S.to, preset:S.preset })); } catch {}
+}
 
 function initDate() {
   const ctrl = $('#dateCtrl'), btn = $('#dateBtn'), pop = $('#datePop');
@@ -459,7 +486,11 @@ function renderQuick() {
     box.append(b);
   });
 }
-function setRange(a, z, preset) { S.from = a; S.to = z; S.preset = preset; closeAll(); applyDateLabel(); render(); }
+function setRange(a, z, preset) {
+  S.from = a; S.to = z; S.preset = preset;
+  saveDateRange();
+  closeAll(); applyDateLabel(); render();
+}
 
 function applyDateLabel() {
   const p = PRESETS.find(p => p[0] === S.preset);
