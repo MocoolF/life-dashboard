@@ -325,7 +325,7 @@ function renderTimeline() {
   S.tipOut = out;
 }
 
-/* две линии на одном поле: различаются цветом линии и формой точки, точка — цветом зоны */
+/* два ряда столбцов на одном поле: привычки и задачи различаются цветом */
 const SERIES = [
   { id:'hab',  title:'Привычки', line:'var(--l-hab)',  shape:'circle', p: r => r.habP },
   { id:'task', title:'Задачи',   line:'var(--l-task)', shape:'square', p: r => r.taskP }
@@ -361,19 +361,18 @@ function chart(rows, W, series) {
     t.textContent = r.label; svg.append(t);
   });
 
-  // линии рвутся только там, где дня нет в данных
+  // сгруппированные столбцы по дням; при отключении остаются компактные точки
   const rad = slot < 6 ? 2.6 : slot < 10 ? 3.4 : 4.8;
-  if (S.view.lines) series.forEach(s => {
-    let seg = [];
-    const flush = () => {
-      if (seg.length > 1) svg.append(mk('polyline', { points:seg.join(' '), fill:'none', stroke:s.line,
-        'stroke-width':2.2, 'stroke-linejoin':'round', 'stroke-linecap':'round', 'stroke-opacity':.85 }));
-      seg = [];
-    };
-    rows.forEach((r, i) => { const p = s.p(r); if (p == null) flush(); else seg.push(`${x(i).toFixed(1)},${y(p).toFixed(1)}`); });
-    flush();
-  });
-  series.forEach(s => rows.forEach((r, i) => {
+  const gap = Math.max(1, Math.min(3, slot * .12));
+  const groupW = Math.min(slot * .76, series.length === 1 ? 18 : 30);
+  const barW = Math.max(1.5, (groupW - gap * (series.length - 1)) / series.length);
+  const barX = (i, k) => x(i) - groupW / 2 + k * (barW + gap);
+  if (S.view.bars) series.forEach((s, k) => rows.forEach((r, i) => {
+    const p = s.p(r); if (p == null) return;
+    svg.append(mk('rect', { x:barX(i, k), y:y(p), width:barW, height:Math.max(1, y(0) - y(p)),
+      rx:Math.min(3, barW / 3), fill:s.line, opacity:.82 }));
+  }));
+  else series.forEach(s => rows.forEach((r, i) => {
     const p = s.p(r); if (p == null) return;
     const a = { fill:zvar(zone(p)), stroke:'var(--surface)', 'stroke-width':2 };
     svg.append(s.shape === 'circle' ? mk('circle', { cx:x(i), cy:y(p), r:rad, ...a })
@@ -534,11 +533,11 @@ function monthView(mStart, withPrev) {
 }
 
 /* ===================== вид графика ===================== */
-const VIEW_DEF = { hab:true, task:true, lines:true, zones:true };
+const VIEW_DEF = { hab:true, task:true, bars:true, zones:true };
 function loadView() {
   try {
     const v = JSON.parse(localStorage.getItem('life-view') || 'null');
-    if (v) return { ...VIEW_DEF, ...v };
+    if (v) return { ...VIEW_DEF, ...v, bars:v.bars ?? v.lines ?? true };
     const old = localStorage.getItem('life-show');          // прежний переключатель «Обе / Привычки / Задачи»
     if (old && old !== 'both') return { ...VIEW_DEF, hab: old === 'hab', task: old === 'task' };
   } catch {}
@@ -548,7 +547,7 @@ const VIEW_ITEMS = [
   ['hab',   'Привычки'],
   ['task',  'Задачи'],
   null,
-  ['lines', 'Линии'],
+  ['bars',  'Столбцы'],
   ['zones', 'Зоны']
 ];
 /* галочки прямо в шапке таймлайна */
@@ -558,9 +557,10 @@ function drawView() {
   VIEW_ITEMS.forEach(it => {
     if (!it) { box.append(el('span','vchk__sep')); return; }
     const [k, name] = it;
+    const key = k === 'hab' || k === 'task' ? `<i class="chan__key is-${k}" aria-hidden="true"></i>` : '';
     const row = el('button','chan__row vchk__i' + (S.view[k] ? ' on' : ''), `
       <span class="chan__box"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M5 13l4 4L19 7"/></svg></span>
-      <span>${name}</span>`);
+      ${key}<span>${name}</span>`);
     row.setAttribute('aria-pressed', S.view[k]);
     row.onclick = () => {
       S.view[k] = !S.view[k];
