@@ -44,7 +44,7 @@ const zvar = z => `var(--z-${z})`;
 /* ===================== state ===================== */
 const S = {
   habits: [], days: [], byDate: new Map(),
-  from: monStart(TODAY), to: TODAY, preset: 'month', tab: 'dyn',
+  from: monStart(TODAY), to: monEnd(TODAY), preset: 'month', tab: 'dyn',
   view: null,         // что и как рисовать на таймлайне — читается в boot()
   habitRange: 'half', // период на отдельном листе привычек
   H: null,            // черновик привычек за сегодня
@@ -344,12 +344,7 @@ function tipHtml(r, step, show = ['hab','task']) {
 /* ===================== date picker ===================== */
 const PRESETS = [
   ['week','Текущая неделя',    () => [mondayOf(TODAY), addD(mondayOf(TODAY), 6)]],   // вся неделя пн–вс, будущие дни пустые
-  ['d7','Последние 7 дней',    () => [addD(TODAY,-6), TODAY]],
-  ['d30','Последние 30 дней',  () => [addD(TODAY,-29), TODAY]],
-  ['month','Текущий месяц',    () => [monStart(TODAY), TODAY]],
-  ['pmonth','Прошлый месяц',   () => { const p = addD(monStart(TODAY), -1); return [monStart(p), p]; }],
-  ['q','Последние 90 дней',    () => [addD(TODAY,-89), TODAY]],
-  ['all','Всё время',          () => [S.days[0]?.date || TODAY, TODAY]]
+  ['month','Текущий месяц',    () => [monStart(TODAY), monEnd(TODAY)]]
 ];
 
 let dpFrom = null, dpTo = null, dpLeft = null;
@@ -366,7 +361,7 @@ function initDate() {
   applyDateLabel();
 }
 
-const QUICK = [['week','Неделя'], ['month','Месяц'], ['q','90 дней']];
+const QUICK = [['week','Неделя'], ['month','Текущий месяц']];
 
 function renderQuick() {
   const box = $('#quick'); box.innerHTML = '';
