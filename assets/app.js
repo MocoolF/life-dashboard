@@ -858,7 +858,7 @@ function renderMark() {
   const showT = M.planned > 0;
   setPill('#taskPill', showT ? pct(M.done, M.planned) : 0, showT ? `${M.done}/${M.planned} · ${pctS(pct(M.done, M.planned))}` : 'не распланирован · 0%');
   const tb = $('#taskBox'); tb.innerHTML = '';
-  [['planned','Поставлено'], ['done','Сделано']].forEach(([k, name]) => {
+  [['done','Сделано'], ['planned','Поставлено']].forEach(([k, name]) => {
     const w = el('div','st', `<div class="st__l">${name}</div>`);
     const r = el('div','st__row');
     const minus = el('button','st__b','−'), plus = el('button','st__b','+');
