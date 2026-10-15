@@ -185,9 +185,10 @@ function elapsedRange() {
 function previousRange(current) {
   if (!current) return null;
   if (S.preset === 'week') return { from:addD(current.from, -7), to:addD(current.to, -7) };
-  if (S.preset === 'month') {
+  if (S.preset === 'month' || S.preset === 'pmonth') {
     const previousMonth = addD(monStart(current.from), -1);
     const from = monStart(previousMonth);
+    if (current.to === monEnd(current.from)) return { from, to:monEnd(from) };
     const day = Math.min(parse(current.to).getDate(), parse(monEnd(from)).getDate());
     const base = parse(from);
     return { from, to:iso(new Date(base.getFullYear(), base.getMonth(), day)) };
@@ -409,8 +410,12 @@ function tipHtml(r, step, show = ['hab','task']) {
 
 /* ===================== date picker ===================== */
 const PRESETS = [
+  ['today','Сегодня',           () => [TODAY, TODAY]],
   ['week','Текущая неделя',    () => [mondayOf(TODAY), addD(mondayOf(TODAY), 6)]],   // вся неделя пн–вс, будущие дни пустые
-  ['month','Текущий месяц',    () => [monStart(TODAY), monEnd(TODAY)]]
+  ['month','Текущий месяц',    () => [monStart(TODAY), monEnd(TODAY)]],
+  ['pmonth','Прошлый месяц',   () => { const p = addD(monStart(TODAY), -1); return [monStart(p), p]; }],
+  ['q','Последние 90 дней',    () => [addD(TODAY, -89), TODAY]],
+  ['all','Всё время',          () => [S.days[0]?.date || TODAY, TODAY]]
 ];
 
 let dpFrom = null, dpTo = null, dpLeft = null;
