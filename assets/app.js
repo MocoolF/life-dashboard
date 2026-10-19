@@ -53,7 +53,7 @@ const S = {
 };
 
 const REPO = 'MocoolF/life-dashboard';
-const FILES = { habits:'data/habits.json', days:'data/days.json' };
+const FILES = { habits:'data/habits.json', days:'data/days.json', reviews:'data/reviews.json' };
 
 function setData(habits, days) {
   S.habits = habits;
@@ -73,6 +73,7 @@ async function boot() {
       Открой папку через локальный сервер: <code>python3 -m http.server</code></div></div>`;
     return;
   }
+  S.reviews = await loadReviews();
   loadDateRange();
   S.view = loadView();
   S.habitRange = loadHabitRange();
@@ -82,6 +83,51 @@ async function boot() {
   render();
   if (GH.token) reload();
   let t; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => S.tab === 'dyn' && renderTimeline(), 120); });
+}
+
+/* ===================== итоги недели ===================== */
+// разборы пишет облачная задача Claude по понедельникам (см. README) — здесь только показ
+async function loadReviews() {
+  try {
+    const r = await fetch(FILES.reviews + '?_=' + Date.now(), {cache:'no-store'});
+    if (!r.ok) return [];
+    return (await r.json()).sort((a,b) => b.week.localeCompare(a.week));   // свежий — первым
+  } catch { return []; }
+}
+function renderReview() {
+  const box = $('#review');
+  const R = S.reviews || [];
+  if (!R.length) { box.hidden = true; return; }
+  box.hidden = false;
+  S.rv = Math.max(0, Math.min(R.length - 1, S.rv || 0));
+  const r = R[S.rv];
+  const open = (() => { try { return localStorage.getItem('life-review-open') !== '0'; } catch { return true; } })();
+  const delta = (cur, prev) => {
+    if (cur == null || prev == null) return '';
+    const d = Math.round(cur) - Math.round(prev);
+    return `<span class="rv__d ${d > 0 ? 'up' : d < 0 ? 'down' : ''}">${d > 0 ? '↑' : d < 0 ? '↓' : ''}${Math.abs(d)} п.п.</span>`;
+  };
+  const stat = (name, x) => x ? `<span class="rv__s"><span class="rv__sn">${name}</span>
+    <b class="z-${zone(x.pct)}">${pctS(x.pct)}</b>${delta(x.pct, x.prev)}</span>` : '';
+  box.innerHTML = `
+    <div class="rv__head">
+      <div class="rv__ttl"><span class="card__title">Итоги недели</span><span class="rv__wk">${span(r.week, r.to)}</span></div>
+      <div class="rv__nav">
+        <button class="day__nav rv__b" id="rvOld" aria-label="Неделя раньше"${S.rv >= R.length - 1 ? ' disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <button class="day__nav rv__b" id="rvNew" aria-label="Неделя позже"${S.rv <= 0 ? ' disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg></button>
+      </div>
+    </div>
+    <div class="rv__stats">${stat('Привычки', r.habits)}${stat('Задачи', r.tasks)}</div>
+    <details class="rv__body"${open ? ' open' : ''}>
+      <summary class="rv__title">${esc(r.title || 'Разбор недели')}</summary>
+      ${(r.sections || []).map(x => `<div class="rv__sec">
+        ${x.t ? `<div class="rv__st">${esc(x.t)}</div>` : ''}
+        ${x.p ? `<p>${esc(x.p)}</p>` : ''}
+        ${x.li ? `<ul>${x.li.map(i => `<li>${esc(i)}</li>`).join('')}</ul>` : ''}</div>`).join('')}
+    </details>`;
+  $('#rvOld').onclick = () => { S.rv++; renderReview(); };
+  $('#rvNew').onclick = () => { S.rv--; renderReview(); };
+  $('.rv__body', box).addEventListener('toggle', e => { try { localStorage.setItem('life-review-open', e.target.open ? '1' : '0'); } catch {} });
 }
 
 /* ===================== утреннее напоминание ===================== */
@@ -136,6 +182,7 @@ function initTabs() {
 function render() {
   if (S.tab === 'mark') return renderMark();
   if (S.tab === 'hab') return renderHabits();
+  renderReview();
   renderTop();
   renderTimeline();
 }
@@ -854,6 +901,7 @@ async function reload() {
       ? (await ghRead(f)).data
       : fetch(f + '?_=' + Date.now(), {cache:'no-store'}).then(r => r.json())));
     setData(h, d);
+    S.reviews = await loadReviews();
     if (S.M && !isDirty()) loadMark(S.M.date);
     if (S.H && !isHabitDirty()) loadHabitToday();
     render();
