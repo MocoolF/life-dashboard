@@ -109,5 +109,6 @@
  {"date":"2026-10-16","h":{"wake":false,"run":true,"math":true,"physics":false,"ritual":true,"calendar":true,"nosocial":false,"book":false,"video":false,"sleep":false},"done":6,"planned":8},
  {"date":"2026-10-17","h":{"wake":false,"run":false,"math":false,"physics":false,"ritual":true,"calendar":true,"nosocial":false,"book":false,"video":false,"sleep":false},"done":1,"planned":1},
  {"date":"2026-10-18","h":{"wake":false,"run":false,"math":true,"physics":false,"ritual":false,"calendar":false,"nosocial":false,"book":false,"video":false,"sleep":false},"done":2,"planned":2},
- {"date":"2026-10-19","h":{"wake":false,"run":true,"math":false,"physics":false,"ritual":false,"calendar":false,"nosocial":false,"book":false,"video":false,"sleep":false}}
+ {"date":"2026-10-19","h":{"wake":false,"run":true,"math":false,"physics":false,"ritual":false,"calendar":false,"nosocial":false,"book":false,"video":false,"sleep":false}},
+ {"date":"2026-10-21","h":{"wake":true}}
 ]
