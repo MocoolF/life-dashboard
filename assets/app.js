@@ -135,7 +135,7 @@ function renderReview() {
 }
 
 /* ===================== ключевые задачи ===================== */
-// три задачи на развитие в день: { t: текст, d: сделано }. Прошедший день без отметки = 0 из 3
+// три задачи на развитие в день: { d: сделано } — сами задачи Глеб ведёт в другом месте. Прошедший день без отметки = 0 из 3
 const KEYS = 3;
 function keyOn(date) {
   const rec = S.byDate.get(date);
@@ -199,7 +199,6 @@ function renderKeys() {
       h += `<div class="tip__r"><i class="tip__dot" style="background:${zvar(zone(pct(v.d, v.t)))}"></i>
         <span class="tip__n">Ключевые задачи</span><b>${v.d} из ${v.t}</b></div>`;
       if (v.unmarked) h += `<div class="tip__miss">день не отмечен</div>`;
-      v.items.filter(k => k.t).forEach(k => { h += `<div class="tip__miss">${k.d ? '✓' : '✗'} ${esc(k.t)}</div>`; });
     }
     tip.innerHTML = h; tip.hidden = false;
     const tw = tip.offsetWidth, th = tip.offsetHeight;
@@ -1024,7 +1023,7 @@ function loadMark(date) {
     date, rec, ids,
     h: Object.fromEntries(ids.map(i => [i, !!rec?.h?.[i]])),
     done: rec?.done || 0, planned: rec?.planned || 0,
-    k: Array.from({ length: KEYS }, (_, i) => ({ t: rec?.k?.[i]?.t || '', d: !!rec?.k?.[i]?.d })),
+    k: Array.from({ length: KEYS }, (_, i) => ({ d: !!rec?.k?.[i]?.d })),
     hTouched: false, tTouched: false, kTouched: false
   };
 }
@@ -1063,18 +1062,16 @@ function renderMark() {
     list.append(b);
   });
 
-  // ключевые задачи: галочка + текст; текст правится без перерисовки, чтобы не терять фокус
+  // ключевые задачи: сами задачи выписаны у Глеба в другом месте — здесь только отметка 1/2/3
   const kd = M.k.filter(x => x.d).length, showK = M.kTouched || M.rec?.k;
   setPill('#keyPill', showK ? pct(kd, KEYS) : null, showK ? `${kd}/${KEYS} · ${pctS(pct(kd, KEYS))}` : `0/${KEYS}`);
   const kl = $('#keyList'); kl.innerHTML = '';
   M.k.forEach((item, i) => {
-    const r = el('div','kr' + (item.d ? ' on' : ''));
-    const b = el('button','hb__box kr__box', '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="M5 13l4 4L19 7"/></svg>');
-    b.setAttribute('aria-label', `Ключевая задача ${i + 1} — сделано`);
+    const b = el('button','hb' + (item.d ? ' on' : ''), `
+      <span class="hb__box"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="M5 13l4 4L19 7"/></svg></span>
+      <span class="hb__n">Ключевая задача ${i + 1}</span>`);
     b.onclick = () => { item.d = !item.d; M.kTouched = true; renderMark(); };
-    const inp = el('input','inp kr__inp'); inp.value = item.t; inp.placeholder = `Ключевая задача ${i + 1}`;
-    inp.oninput = () => { item.t = inp.value; M.kTouched = true; renderSaveBar(); };
-    r.append(b, inp); kl.append(r);
+    kl.append(b);
   });
 
   // задачи
@@ -1127,7 +1124,7 @@ async function saveDay(btn) {
   const patch = {};
   if (M.hTouched || M.rec?.h) patch.h = Object.fromEntries(M.ids.map(i => [i, !!M.h[i]]));
   if (M.tTouched || M.rec?.planned != null) { patch.done = M.done; patch.planned = M.planned; }
-  if (M.kTouched || M.rec?.k) patch.k = M.k.map(x => ({ t: x.t.trim(), d: !!x.d }));
+  if (M.kTouched || M.rec?.k) patch.k = M.k.map(x => ({ d: !!x.d }));
   const hd = patch.h ? Object.values(patch.h).filter(Boolean).length : null;
   const msg = [short(M.date),
     patch.h && `привычки ${hd}/${Object.keys(patch.h).length}`,
