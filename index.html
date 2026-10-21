@@ -16,7 +16,7 @@
 <title>bobrov.dashbord</title>
 <link rel="preload" href="assets/fonts/Involve-Regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/Involve-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/style.css?v=b2ec2f8e">
+<link rel="stylesheet" href="assets/style.css?v=dbeae8c9">
 </head>
 <body>
 
@@ -84,9 +84,20 @@
     <div class="tl" id="timeline"></div>
   </section>
 
+  <section class="card">
+    <div class="card__head card__head--row">
+      <div>
+        <h2 class="card__title">Ключевые задачи</h2>
+        <p class="card__hint" id="keysHint"></p>
+      </div>
+      <span class="keys__sum" id="keysSum"></span>
+    </div>
+    <div class="tl" id="keys"></div>
+  </section>
+
   <footer class="foot">
     Зоны: красная — меньше 50%, голубая — 50–75%, зелёная — 75% и выше
-    · <span id="build">сборка 21.10 10:37 · b2ec2f8e</span>
+    · <span id="build">сборка 21.10 10:39 · dbeae8c9</span>
   </footer>
 </main>
 
@@ -123,6 +134,15 @@
 
   <section class="card">
     <div class="card__head card__head--row">
+      <h2 class="card__title">Ключевые задачи</h2>
+      <span class="pill" id="keyPill"></span>
+    </div>
+    <p class="card__hint keys__note">Три задачи на развитие — не операционка</p>
+    <div class="kl" id="keyList"></div>
+  </section>
+
+  <section class="card">
+    <div class="card__head card__head--row">
       <h2 class="card__title">Задачи</h2>
       <span class="pill" id="taskPill"></span>
     </div>
@@ -142,6 +162,6 @@
 
 <div class="tip" id="tip" hidden></div>
 
-<script src="assets/app.js?v=b2ec2f8e"></script>
+<script src="assets/app.js?v=dbeae8c9"></script>
 </body>
 </html>

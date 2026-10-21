@@ -8,6 +8,7 @@
 - привычки ежедневные: сумма выполненных ÷ сумма привычек за неделю; прошедший день без отметки `h`
   (начиная с первого дня учёта привычек, до сегодня не включая) = 0 из N, N — размер списка на тот день;
 - задачи: сумма сделанного ÷ сумма поставленного; `planned: 0` = день не распланирован = 0 из 1;
+- ключевые задачи: 3 в день (`k`), сделанные ÷ 3; прошедший день без `k` (с первого дня учёта) = 0 из 3;
 - зоны: < 50 красная, 50–75 голубая, ≥ 75 зелёная.
 """
 import datetime as dt
@@ -40,13 +41,21 @@ def habit_count_on(days, habits, date):
 def week(days, habits, start):
     dates = [(start + dt.timedelta(i)).isoformat() for i in range(7)]
     hab_start = min((d for d, r in days.items() if r.get('h')), default=None)
+    k_start = min((d for d, r in days.items() if r.get('k')), default=None)
+    kd = kt = k_unmarked = 0
     today = dt.date.today().isoformat()
     unmarked = 0
     hd = ht = td = tt = noplan = 0
     per_day, per_habit = [], {}
     for i, d in enumerate(dates):
         r = days.get(d)
-        row = {'date': d, 'wd': WD[i], 'habits': None, 'tasks': None}
+        row = {'date': d, 'wd': WD[i], 'habits': None, 'tasks': None, 'keys': None}
+        if r and r.get('k'):
+            n = sum(1 for x in r['k'] if x.get('d')); kd += n; kt += 3
+            row['keys'] = {'done': n, 'of': 3, 'items': r['k']}
+        elif k_start and k_start <= d < today:
+            kt += 3; k_unmarked += 1
+            row['keys'] = {'done': 0, 'of': 3, 'unmarked': True}
         if r and r.get('h'):
             dd, t = sum(r['h'].values()), len(r['h'])
             hd += dd; ht += t
@@ -73,6 +82,7 @@ def week(days, habits, start):
         'tasks': {'done': td, 'of': tt, 'pct': pct(td, tt), 'zone': zone(pct(td, tt)), 'days_logged': len(planned),
                   'days_unplanned': noplan,
                   'avg_planned': round(sum(x['tasks']['of'] for x in planned) / len(planned), 1) if planned else None},
+        'keys': {'done': kd, 'of': kt, 'pct': pct(kd, kt), 'zone': zone(pct(kd, kt)), 'days_unmarked': k_unmarked},
         'per_habit': sorted(({'id': k, 'name': names.get(k, {}).get('name', k), 'active_now': names.get(k, {}).get('active'),
                               'done': v[0], 'of': v[1], 'pct': pct(v[0], v[1])} for k, v in per_habit.items()),
                             key=lambda x: (x['pct'], x['name'])),

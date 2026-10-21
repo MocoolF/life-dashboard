@@ -119,6 +119,18 @@ html[data-theme="dark"]{ --z-red:#e66767; --z-blue:#2b98cc; --z-green:#22a876;
 .wrap--narrow{max-width:640px}
 #view-hab{max-width:1180px}
 
+/* ключевые задачи */
+.keys__sum{font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.keys__sum b{font-weight:700}
+.keys__note{margin:-8px 0 10px}
+.kl{display:flex;flex-direction:column;gap:8px}
+.kr{display:flex;align-items:center;gap:10px}
+.kr__box{width:24px;height:24px;cursor:pointer}
+.kr.on .kr__box{background:var(--brand);border-color:var(--brand)}
+.kr.on .kr__box svg{opacity:1}
+.kr__inp{flex:1}
+.kr.on .kr__inp{color:var(--ink-2);text-decoration:line-through;text-decoration-color:var(--ink-3)}
+
 /* итоги недели */
 .rv__head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .rv__ttl{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}

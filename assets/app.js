@@ -60,6 +60,7 @@ function setData(habits, days) {
   S.days = [...days].sort((a,b) => a.date.localeCompare(b.date));
   S.byDate = new Map(S.days.map(d => [d.date, d]));
   S.habStart = S.days.find(d => d.h)?.date || null;   // с этого дня привычки считаются ежедневно
+  S.kStart = S.days.find(d => d.k)?.date || null;     // и ключевые задачи — тоже
 }
 const habitName = id => S.habits.find(h => h.id === id)?.name || id;
 
@@ -83,7 +84,7 @@ async function boot() {
   $('#updated').textContent = 'сегодня ' + long(TODAY);
   render();
   if (GH.token) reload();
-  let t; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => S.tab === 'dyn' && renderTimeline(), 120); });
+  let t; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { if (S.tab === 'dyn') { renderTimeline(); renderKeys(); } }, 120); });
 }
 
 /* ===================== итоги недели ===================== */
@@ -131,6 +132,84 @@ function renderReview() {
   $('#rvNew').onclick = () => { S.rv--; renderReview(); };
   // свёрнуто — остаются неделя и два числа; состояние помнится в браузере
   $('#rvToggle').onclick = () => { try { localStorage.setItem('life-review-open', open ? '0' : '1'); } catch {} renderReview(); };
+}
+
+/* ===================== ключевые задачи ===================== */
+// три задачи на развитие в день: { t: текст, d: сделано }. Прошедший день без отметки = 0 из 3
+const KEYS = 3;
+function keyOn(date) {
+  const rec = S.byDate.get(date);
+  if (rec?.k) return { d: rec.k.filter(x => x.d).length, t: KEYS, items: rec.k };
+  if (S.kStart && date >= S.kStart && date < TODAY) return { d:0, t:KEYS, items:[], unmarked:true };
+  return null;
+}
+
+function renderKeys() {
+  const box = $('#keys'); if (!box) return;
+  const dates = datesOf(S.from, S.to);
+  const vals = dates.map(keyOn);
+  const tot = vals.filter(Boolean).reduce((a, v) => ({ d: a.d + v.d, t: a.t + v.t }), { d:0, t:0 });
+  $('#keysHint').textContent = `${span(S.from, S.to)} · по дням`;
+  $('#keysSum').innerHTML = tot.t ? `за период <b class="z-${zone(pct(tot.d, tot.t))}">${tot.d} из ${tot.t}</b> · ${pctS(pct(tot.d, tot.t))}` : '';
+  box.innerHTML = '';
+  if (!S.kStart) { box.append(el('div','empty','Пока нет отметок — заполни ключевые задачи на вкладке «Трекер»')); return; }
+
+  const W = Math.max(280, box.clientWidth || 600), H = W < 520 ? 190 : 230, L = 30, R = 6, T = 10, B = 24;
+  const iw = W - L - R, ih = H - T - B, n = dates.length, slot = iw / n;
+  const svg = mk('svg', { viewBox:`0 0 ${W} ${H}`, width:W, height:H, class:'tl__svg', role:'img', 'aria-label':'Ключевые задачи по дням' });
+  const x = i => L + (i + .5) * slot;
+  const y = v => T + ih - v / KEYS * ih;
+  for (let v = 0; v <= KEYS; v++) {
+    svg.append(mk('line', { x1:L, x2:W - R, y1:y(v) + (v ? 0 : .5), y2:y(v) + (v ? 0 : .5), stroke: v ? 'var(--line-2)' : 'var(--line)', 'stroke-width':1 }));
+    const t = mk('text', { x:L - 8, y:y(v) + 4, 'text-anchor':'end', 'font-size':11, fill:'var(--ink-3)' });
+    t.textContent = v; svg.append(t);
+  }
+  const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(iw / 64))));
+  dates.forEach((d, i) => {
+    if (i % every && i !== n - 1) return;
+    if (i === n - 1 && i % every && (i % every) < every * .6) return;
+    const t = mk('text', { x:x(i), y:H - 6, 'text-anchor':'middle', 'font-size':11, fill:'var(--ink-3)' });
+    t.textContent = short(d); svg.append(t);
+  });
+  const bw = Math.max(3, Math.min(slot * .62, 30));
+  vals.forEach((v, i) => {
+    if (!v) return;
+    const h = v.d ? y(0) - y(v.d) : 3;                  // 0 из 3 — короткая красная полоска: день посчитан
+    svg.append(mk('rect', { x:x(i) - bw/2, y:y(0) - h, width:bw, height:h, rx:Math.min(4, bw/3),
+      fill:zvar(zone(pct(v.d, v.t))), 'fill-opacity': v.unmarked ? .55 : 1 }));
+  });
+  const hl = mk('rect', { y:T, height:ih, width:slot, fill:'var(--ink)', 'fill-opacity':.05, opacity:0 });
+  svg.insertBefore(hl, svg.firstChild);
+  svg.append(mk('rect', { x:L, y:0, width:iw, height:H, fill:'transparent' }));
+  box.append(svg);
+
+  const tip = $('#tip');
+  const out = () => { hl.setAttribute('opacity', 0); tip.hidden = true; };
+  const move = ev => {
+    const pt = ev.touches ? ev.touches[0] : ev;
+    const b = svg.getBoundingClientRect();
+    const px = (pt.clientX - b.left) / b.width * W;
+    if (px < L - 6 || px > W - R + 6) return out();
+    const i = Math.max(0, Math.min(n - 1, Math.floor((px - L) / slot)));
+    hl.setAttribute('x', L + i * slot); hl.setAttribute('opacity', 1);
+    const v = vals[i];
+    let h = `<div class="tip__d">${dayName(dates[i])}</div>`;
+    if (!v) h += `<div class="tip__r"><span class="tip__n">Ключевые задачи</span><b>нет данных</b></div>`;
+    else {
+      h += `<div class="tip__r"><i class="tip__dot" style="background:${zvar(zone(pct(v.d, v.t)))}"></i>
+        <span class="tip__n">Ключевые задачи</span><b>${v.d} из ${v.t}</b></div>`;
+      if (v.unmarked) h += `<div class="tip__miss">день не отмечен</div>`;
+      v.items.filter(k => k.t).forEach(k => { h += `<div class="tip__miss">${k.d ? '✓' : '✗'} ${esc(k.t)}</div>`; });
+    }
+    tip.innerHTML = h; tip.hidden = false;
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    tip.style.left = Math.max(8, Math.min(innerWidth - tw - 8, pt.clientX - tw/2)) + 'px';
+    tip.style.top  = (pt.clientY - th - 16 < 8 ? pt.clientY + 18 : pt.clientY - th - 16) + 'px';
+  };
+  svg.addEventListener('mousemove', move);
+  svg.addEventListener('mouseleave', out);
+  svg.addEventListener('touchstart', move, {passive:true});
+  svg.addEventListener('touchmove',  move, {passive:true});
 }
 
 /* ===================== утреннее напоминание ===================== */
@@ -188,6 +267,7 @@ function render() {
   renderReview();
   renderTop();
   renderTimeline();
+  renderKeys();
 }
 
 /* ===================== расчёты ===================== */
@@ -944,10 +1024,11 @@ function loadMark(date) {
     date, rec, ids,
     h: Object.fromEntries(ids.map(i => [i, !!rec?.h?.[i]])),
     done: rec?.done || 0, planned: rec?.planned || 0,
-    hTouched: false, tTouched: false
+    k: Array.from({ length: KEYS }, (_, i) => ({ t: rec?.k?.[i]?.t || '', d: !!rec?.k?.[i]?.d })),
+    hTouched: false, tTouched: false, kTouched: false
   };
 }
-const isDirty = () => !!S.M && (S.M.hTouched || S.M.tTouched);
+const isDirty = () => !!S.M && (S.M.hTouched || S.M.tTouched || S.M.kTouched);
 
 function renderMark() {
   renderAuth();
@@ -982,6 +1063,20 @@ function renderMark() {
     list.append(b);
   });
 
+  // ключевые задачи: галочка + текст; текст правится без перерисовки, чтобы не терять фокус
+  const kd = M.k.filter(x => x.d).length, showK = M.kTouched || M.rec?.k;
+  setPill('#keyPill', showK ? pct(kd, KEYS) : null, showK ? `${kd}/${KEYS} · ${pctS(pct(kd, KEYS))}` : `0/${KEYS}`);
+  const kl = $('#keyList'); kl.innerHTML = '';
+  M.k.forEach((item, i) => {
+    const r = el('div','kr' + (item.d ? ' on' : ''));
+    const b = el('button','hb__box kr__box', '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="M5 13l4 4L19 7"/></svg>');
+    b.setAttribute('aria-label', `Ключевая задача ${i + 1} — сделано`);
+    b.onclick = () => { item.d = !item.d; M.kTouched = true; renderMark(); };
+    const inp = el('input','inp kr__inp'); inp.value = item.t; inp.placeholder = `Ключевая задача ${i + 1}`;
+    inp.oninput = () => { item.t = inp.value; M.kTouched = true; renderSaveBar(); };
+    r.append(b, inp); kl.append(r);
+  });
+
   // задачи
   const showT = M.planned > 0;
   setPill('#taskPill', showT ? pct(M.done, M.planned) : 0, showT ? `${M.done}/${M.planned} · ${pctS(pct(M.done, M.planned))}` : 'не распланирован · 0%');
@@ -1005,17 +1100,20 @@ function renderMark() {
   });
   tb.append(el('div','steps__note', '0 поставленных — день не распланирован: считается как 0 из 1'));
 
-  // сохранение
+  renderSaveBar();
+  renderMng();
+}
+
+function renderSaveBar() {
+  const M = S.M;
   const bar = $('#saveBar'); bar.innerHTML = '';
-  const known = M.rec && (M.rec.h || M.rec.planned != null);
+  const known = M.rec && (M.rec.h || M.rec.k || M.rec.planned != null);
   bar.append(el('span','savebar__t', isDirty() ? '<b>Есть несохранённые изменения</b>'
     : known ? 'День сохранён' : 'День ещё не отмечен'));
   const save = el('button','btn btn--primary','Сохранить');
   save.disabled = !isDirty();
   save.onclick = () => saveDay(save);
   bar.append(save);
-
-  renderMng();
 }
 
 function setPill(sel, p, text) {
@@ -1029,9 +1127,11 @@ async function saveDay(btn) {
   const patch = {};
   if (M.hTouched || M.rec?.h) patch.h = Object.fromEntries(M.ids.map(i => [i, !!M.h[i]]));
   if (M.tTouched || M.rec?.planned != null) { patch.done = M.done; patch.planned = M.planned; }
+  if (M.kTouched || M.rec?.k) patch.k = M.k.map(x => ({ t: x.t.trim(), d: !!x.d }));
   const hd = patch.h ? Object.values(patch.h).filter(Boolean).length : null;
   const msg = [short(M.date),
     patch.h && `привычки ${hd}/${Object.keys(patch.h).length}`,
+    patch.k && `ключевые ${patch.k.filter(x => x.d).length}/${KEYS}`,
     patch.planned != null && (patch.planned ? `задачи ${patch.done}/${patch.planned}` : 'день не распланирован')].filter(Boolean).join(' · ');
   try {
     busy(btn, true);
