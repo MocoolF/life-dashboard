@@ -5,7 +5,8 @@
     python3 tools/week_stats.py 2026-10-12   # неделя с этого понедельника
 
 Правила (как в assets/app.js):
-- привычки: сумма выполненных ÷ сумма отмеченных за неделю, только дни с отметкой `h`;
+- привычки ежедневные: сумма выполненных ÷ сумма привычек за неделю; прошедший день без отметки `h`
+  (начиная с первого дня учёта привычек, до сегодня не включая) = 0 из N, N — размер списка на тот день;
 - задачи: сумма сделанного ÷ сумма поставленного; `planned: 0` = день не распланирован = 0 из 1;
 - зоны: < 50 красная, 50–75 голубая, ≥ 75 зелёная.
 """
@@ -26,8 +27,21 @@ def pct(a, b):
     return round(a / b * 100, 1) if b else None
 
 
+def habit_count_on(days, habits, date):
+    """Размер списка на дату — по ближайшей отметке, при равенстве по более поздней (как в app.js)."""
+    d0 = dt.date.fromisoformat(date)
+    marked = [(abs((dt.date.fromisoformat(d) - d0).days), d, r) for d, r in days.items() if d != date and r.get('h')]
+    if not marked:
+        return sum(h['active'] for h in habits) or 1
+    dist = min(m[0] for m in marked)
+    return len(max((m for m in marked if m[0] == dist), key=lambda m: m[1])[2]['h'])
+
+
 def week(days, habits, start):
     dates = [(start + dt.timedelta(i)).isoformat() for i in range(7)]
+    hab_start = min((d for d, r in days.items() if r.get('h')), default=None)
+    today = dt.date.today().isoformat()
+    unmarked = 0
     hd = ht = td = tt = noplan = 0
     per_day, per_habit = [], {}
     for i, d in enumerate(dates):
@@ -39,6 +53,10 @@ def week(days, habits, start):
             row['habits'] = {'done': dd, 'of': t, 'pct': pct(dd, t)}
             for k, v in r['h'].items():
                 s = per_habit.setdefault(k, [0, 0]); s[0] += v; s[1] += 1
+        elif hab_start and hab_start <= d < today:      # не отметил = 0 из N
+            t = habit_count_on(days, habits, d)
+            ht += t; unmarked += 1
+            row['habits'] = {'done': 0, 'of': t, 'pct': 0.0, 'unmarked': True}
         if r and r.get('planned') is not None:
             d_, p_ = (r.get('done', 0), r['planned']) if r['planned'] > 0 else (0, 1)
             if r['planned'] == 0:
@@ -51,7 +69,7 @@ def week(days, habits, start):
     planned = [x for x in per_day if x['tasks']]
     return {
         'from': dates[0], 'to': dates[-1],
-        'habits': {'done': hd, 'of': ht, 'pct': pct(hd, ht), 'zone': zone(pct(hd, ht)), 'days_marked': len(marked)},
+        'habits': {'done': hd, 'of': ht, 'pct': pct(hd, ht), 'zone': zone(pct(hd, ht)), 'days_marked': len(marked) - unmarked, 'days_unmarked': unmarked},
         'tasks': {'done': td, 'of': tt, 'pct': pct(td, tt), 'zone': zone(pct(td, tt)), 'days_logged': len(planned),
                   'days_unplanned': noplan,
                   'avg_planned': round(sum(x['tasks']['of'] for x in planned) / len(planned), 1) if planned else None},

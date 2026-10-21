@@ -59,6 +59,7 @@ function setData(habits, days) {
   S.habits = habits;
   S.days = [...days].sort((a,b) => a.date.localeCompare(b.date));
   S.byDate = new Map(S.days.map(d => [d.date, d]));
+  S.habStart = S.days.find(d => d.h)?.date || null;   // с этого дня привычки считаются ежедневно
 }
 const habitName = id => S.habits.find(h => h.id === id)?.name || id;
 
@@ -191,6 +192,27 @@ function render() {
 
 /* ===================== расчёты ===================== */
 /* один день → что о нём известно */
+/* факты дня с учётом правила: привычки ежедневные, прошедший день без отметки = 0 из N */
+function factsOn(date) {
+  const f = dayFacts(S.byDate.get(date));
+  if (!f.hab && S.habStart && date >= S.habStart && date < TODAY) {
+    const n = habitCountOn(date);
+    f.hab = { d:0, t:n, miss:[], unmarked:true };
+  }
+  return f;
+}
+// сколько привычек было в списке на дату: по ближайшей отметке (при равенстве — по более поздней:
+// список мог смениться как раз между ними), иначе — активные сейчас
+function habitCountOn(date) {
+  let best = null, bestDist = Infinity;
+  S.days.forEach(r => {
+    if (!r.h || !Object.keys(r.h).length || r.date === date) return;
+    const dist = Math.abs(Math.round((parse(date) - parse(r.date)) / 864e5));
+    if (dist < bestDist || (dist === bestDist && r.date > best.date)) { best = r; bestDist = dist; }
+  });
+  return best ? Object.keys(best.h).length : (S.habits.filter(h => h.active).length || 1);
+}
+
 function dayFacts(rec) {
   const f = { task:null, noplan:0, hab:null };
   if (!rec) return f;
@@ -205,9 +227,9 @@ function dayFacts(rec) {
 
 /* свёртка нескольких дней в одну точку: суммы, а не среднее процентов */
 function fold(dates) {
-  const o = { task:null, noplan:0, hab:null, miss:new Map() };
+  const o = { task:null, noplan:0, hab:null, miss:new Map(), unmarked:0 };
   dates.forEach(d => {
-    const f = dayFacts(S.byDate.get(d));
+    const f = factsOn(d);
     if (f.task) {
       o.task = o.task || { d:0, t:0 };
       o.task.d += f.task.d; o.task.t += f.task.t;
@@ -217,6 +239,7 @@ function fold(dates) {
       o.hab = o.hab || { d:0, t:0 };
       o.hab.d += f.hab.d; o.hab.t += f.hab.t;
       f.hab.miss.forEach(i => o.miss.set(i, (o.miss.get(i) || 0) + 1));
+      if (f.hab.unmarked) o.unmarked++;
     }
   });
   o.habP  = o.hab  ? pct(o.hab.d,  o.hab.t)  : null;
@@ -251,7 +274,7 @@ function previousRange(current) {
 function zoneDayCounts(dates, key) {
   const counts = { red:0, blue:0, green:0, total:0 };
   dates.forEach(date => {
-    const facts = dayFacts(S.byDate.get(date));
+    const facts = factsOn(date);
     const value = key === 'hab' ? facts.hab : facts.task;
     const z = zone(value ? pct(value.d, value.t) : null);
     if (z) { counts[z]++; counts.total++; }
@@ -260,12 +283,12 @@ function zoneDayCounts(dates, key) {
 }
 
 function greenStreak(key) {
-  const todayFacts = dayFacts(S.byDate.get(TODAY));
+  const todayFacts = factsOn(TODAY);
   const todayValue = key === 'hab' ? todayFacts.hab : todayFacts.task;
   let date = todayValue ? TODAY : addD(TODAY, -1);
   let streak = 0;
   while (true) {
-    const facts = dayFacts(S.byDate.get(date));
+    const facts = factsOn(date);
     const value = key === 'hab' ? facts.hab : facts.task;
     if (!value || zone(pct(value.d, value.t)) !== 'green') break;
     streak++;
@@ -465,6 +488,7 @@ function tipHtml(r, step, show = ['hab','task']) {
   if (!show.includes('hab')) ;
   else if (r.hab) {
     h += row('Привычки', zone(r.habP), `${r.hab.d} из ${r.hab.t} · ${pctS(r.habP)}`);
+    if (r.unmarked) h += miss('день не отмечен');
   } else h += row('Привычки', null, 'нет отметки');
 
   if (!show.includes('task')) ;
@@ -842,6 +866,7 @@ async function saveHabitToday(btn) {
       const old = days.find(d => d.date === TODAY) || {};
       const h = { ...(old.h || {}) };
       changed.forEach(id => { h[id] = !!H.h[id]; });
+      active.forEach(id => { if (!hasOwn(h, id)) h[id] = false; });   // невыполненные тоже пишем — иначе день считается из отмеченных
       const rec = { date:TODAY, ...old, h };
       return [...days.filter(d => d.date !== TODAY), rec].sort((a,b) => a.date.localeCompare(b.date));
     }, msg);
