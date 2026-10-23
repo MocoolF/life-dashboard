@@ -111,5 +111,6 @@
  {"date":"2026-10-18","h":{"wake":false,"run":false,"math":true,"physics":false,"ritual":false,"calendar":false,"nosocial":false,"book":false,"video":false,"sleep":false},"done":2,"planned":2},
  {"date":"2026-10-19","h":{"wake":false,"run":true,"math":false,"nosocial":false,"sleep":false,"physics":false,"ritual":true,"calendar":true,"book":false,"video":false},"done":9,"planned":12,"k":[{"d":true},{"d":true},{"d":false}]},
  {"date":"2026-10-20","done":0,"planned":1},
- {"date":"2026-10-21","h":{"wake":true,"run":true,"math":false,"nosocial":true,"sleep":false},"k":[{"d":true},{"d":false},{"d":false}],"done":2,"planned":4}
+ {"date":"2026-10-21","h":{"wake":true,"run":true,"math":false,"nosocial":true,"sleep":false},"k":[{"d":true},{"d":false},{"d":false}],"done":2,"planned":4},
+ {"date":"2026-10-23","h":{"wake":true,"run":true,"nosocial":true,"math":false,"sleep":false}}
 ]
