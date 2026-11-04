@@ -124,5 +124,5 @@
  {"date":"2026-10-31","done":0,"planned":1},
  {"date":"2026-11-01","h":{"wake":false,"run":false,"math":false,"nosocial":false,"sleep":true},"done":2,"planned":3,"k":[{"d":true},{"d":false},{"d":false}]},
  {"date":"2026-11-02","h":{"wake":true,"run":true,"math":false,"nosocial":true,"sleep":false},"done":5,"planned":8,"k":[{"d":true},{"d":true},{"d":true}]},
- {"date":"2026-11-03","h":{"wake":false,"run":false,"math":false,"nosocial":true,"sleep":false},"done":4,"planned":9,"k":[{"d":true},{"d":true},{"d":false}]}
+ {"date":"2026-11-03","h":{"wake":false,"run":false,"math":false,"nosocial":false,"sleep":false},"done":4,"planned":9,"k":[{"d":true},{"d":true},{"d":false}]}
 ]
