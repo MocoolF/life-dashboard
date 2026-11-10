@@ -979,6 +979,12 @@ async function ghApi(path, opts = {}) {
   if (GH.token) h.Authorization = 'Bearer ' + GH.token;
   const r = await fetch(`https://api.github.com/repos/${REPO}${path}`, { ...opts, headers: h });
   const txt = await r.text();
+  if (r.status === 401 && GH.token) {
+    // ключ отозван или истёк срок (GitHub по умолчанию даёт 30 дней) — сбросить и показать форму нового ключа
+    GH.token = '';
+    try { renderAuth(); } catch {}
+    throw new Error('ключ доступа больше не действует — скорее всего, истёк срок. Создай новый на вкладке «Трекер»');
+  }
   if (!r.ok) throw new Error(`${r.status}: ${(JSON.parse(txt || '{}').message) || txt.slice(0,120)}`);
   return txt ? JSON.parse(txt) : {};
 }
@@ -1230,6 +1236,7 @@ function renderAuth() {
     <ol class="auth__steps">
       <li>Открой <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">страницу создания токена</a></li>
       <li>Repository access → <b>Only select repositories</b> → <b>${REPO.split('/')[1]}</b></li>
+      <li>Expiration → <b>Custom</b> → дата через год (по умолчанию ключ живёт всего 30 дней)</li>
       <li>Permissions → <b>Contents</b> → <b>Read and write</b></li>
       <li>Generate token, скопируй и вставь сюда</li>
     </ol>
