@@ -8,5 +8,6 @@
  {"id":"nosocial","name":"Без соцсетей (только ролик)","active":true},
  {"id":"book","name":"Книга всегда с собой","active":false},
  {"id":"video","name":"Выложить видео","active":false},
- {"id":"sleep","name":"Кровать до 23:00","active":true}
+ {"id":"sleep","name":"Кровать до 23:00","active":true},
+ {"id":"planirovanie_do_9_00","name":"Планирование до 9:00","active":true}
 ]
