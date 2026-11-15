@@ -282,6 +282,10 @@ function factsOn(date) {
 }
 // сколько привычек было в списке на дату: по ближайшей отметке (при равенстве — по более поздней:
 // список мог смениться как раз между ними), иначе — активные сейчас
+// привычка учитывается с даты `from` (если есть) — раньше её как будто не было
+const habitFrom = id => S.habits.find(h => h.id === id)?.from || null;
+const habitLiveOn = (id, date) => !habitFrom(id) || habitFrom(id) <= date;
+
 function habitCountOn(date) {
   let best = null, bestDist = Infinity;
   S.days.forEach(r => {
@@ -289,7 +293,8 @@ function habitCountOn(date) {
     const dist = Math.abs(Math.round((parse(date) - parse(r.date)) / 864e5));
     if (dist < bestDist || (dist === bestDist && r.date > best.date)) { best = r; bestDist = dist; }
   });
-  return best ? Object.keys(best.h).length : (S.habits.filter(h => h.active).length || 1);
+  return best ? (Object.keys(best.h).filter(id => habitLiveOn(id, date)).length || 1)
+              : (S.habits.filter(h => h.active && habitLiveOn(h.id, date)).length || 1);
 }
 
 function dayFacts(rec) {
@@ -1023,7 +1028,7 @@ async function reload() {
 /* ===================== лист «Отметить» ===================== */
 function loadMark(date) {
   const rec = S.byDate.get(date) || null;
-  const ids = S.habits.filter(h => h.active).map(h => h.id);
+  const ids = S.habits.filter(h => h.active && habitLiveOn(h.id, date)).map(h => h.id);   // новая привычка не попадает в дни до своего старта
   if (rec?.h) Object.keys(rec.h).forEach(i => { if (!ids.includes(i)) ids.push(i); });   // отключённые позже — тоже показать
   S.M = {
     date, rec, ids,
@@ -1205,6 +1210,8 @@ async function saveHabits(btn) {
   const used = S.habits.map(h => h.id);
   const list = E.map(h => {
     const o = { id: h.id || slug(h.name.trim(), used), name: h.name.trim(), active: h.active };
+    const from = h.isNew ? TODAY : h.from;              // новая — с сегодняшнего дня; у старых дата сохраняется
+    if (from) o.from = from;
     used.push(o.id); return o;
   });
   // привычки не удаляются из файла — иначе в истории потеряются названия

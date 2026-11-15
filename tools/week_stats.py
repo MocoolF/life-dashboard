@@ -32,10 +32,12 @@ def habit_count_on(days, habits, date):
     """Размер списка на дату — по ближайшей отметке, при равенстве по более поздней (как в app.js)."""
     d0 = dt.date.fromisoformat(date)
     marked = [(abs((dt.date.fromisoformat(d) - d0).days), d, r) for d, r in days.items() if d != date and r.get('h')]
+    frm = {h['id']: h.get('from') for h in habits}
+    live = lambda i: not frm.get(i) or frm[i] <= date          # привычка с датой `from` раньше неё не считается
     if not marked:
-        return sum(h['active'] for h in habits) or 1
+        return sum(1 for h in habits if h['active'] and live(h['id'])) or 1
     dist = min(m[0] for m in marked)
-    return len(max((m for m in marked if m[0] == dist), key=lambda m: m[1])[2]['h'])
+    return len([i for i in max((m for m in marked if m[0] == dist), key=lambda m: m[1])[2]['h'] if live(i)]) or 1
 
 
 def week(days, habits, start):
