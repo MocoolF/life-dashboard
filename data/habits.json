@@ -1,7 +1,7 @@
 [
  {"id":"wake","name":"Подъём в 7:00","active":true},
  {"id":"run","name":"Бег","active":true},
- {"id":"math","name":"Математика ≥ 3 задачи","active":true},
+ {"id":"math","name":"Математика 5 часов","active":true},
  {"id":"physics","name":"Физика 1 час","active":false},
  {"id":"ritual","name":"Ритуал (привычки, задачи, цели)","active":false},
  {"id":"calendar","name":"Жизнь по календарю (циклы)","active":false},
