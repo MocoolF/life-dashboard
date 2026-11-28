@@ -147,5 +147,6 @@
  {"date":"2026-11-23","h":{"wake":false,"run":true,"math":true,"nosocial":true,"sleep":true,"planirovanie_do_9_00":true},"done":7,"planned":11,"k":[{"d":true},{"d":false},{"d":false}]},
  {"date":"2026-11-24","h":{"wake":true,"run":true,"math":true,"nosocial":true,"sleep":true,"planirovanie_do_9_00":true},"done":11,"planned":11,"k":[{"d":true},{"d":true},{"d":true}]},
  {"date":"2026-11-25","h":{"wake":true,"run":true,"math":true,"nosocial":true,"sleep":true,"planirovanie_do_9_00":true},"done":6,"planned":11,"k":[{"d":true},{"d":true},{"d":false}]},
- {"date":"2026-11-26","h":{"wake":true,"run":true,"math":true,"nosocial":false,"sleep":false,"planirovanie_do_9_00":true},"done":10,"planned":13,"k":[{"d":true},{"d":true},{"d":true}]}
+ {"date":"2026-11-26","h":{"wake":true,"run":true,"math":true,"nosocial":false,"sleep":false,"planirovanie_do_9_00":true},"done":10,"planned":13,"k":[{"d":true},{"d":true},{"d":true}]},
+ {"date":"2026-11-27","h":{"wake":false,"run":true,"math":false,"nosocial":false,"sleep":false,"planirovanie_do_9_00":false},"done":0,"planned":1,"k":[{"d":true},{"d":false},{"d":false}]}
 ]
